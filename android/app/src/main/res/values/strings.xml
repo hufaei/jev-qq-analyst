@@ -30,4 +30,13 @@
     <string name="capture_status_empty">最近 QQ 识别状态：尚未检查。进入具体聊天页后返回这里查看。</string>
     <string name="capture_status">最近 QQ 识别状态：%1$s</string>
     <string name="open_accessibility_settings">打开辅助功能设置</string>
+    <string name="diagnostic_title">兼容性诊断</string>
+    <string name="diagnostic_guidance">遇到“会话标题未识别”或没有可见消息时，点“准备采集”，进入 QQ 的具体聊天页，再返回这里导出 JSON。报告只含节点 ID、类型、位置和有无文字，不含标题、聊天正文或 API Key。分享前仍可自行检查文件。</string>
+    <string name="diagnostic_empty">尚无诊断报告。</string>
+    <string name="diagnostic_waiting">等待进入 QQ 的具体聊天页…</string>
+    <string name="diagnostic_ready">已采集 QQ 聊天页节点，可以导出。</string>
+    <string name="diagnostic_arm">准备一次 QQ 节点采集</string>
+    <string name="diagnostic_export">导出脱敏节点报告</string>
+    <string name="diagnostic_saved">报告已保存为 JSON 文件。请将该文件发给开发者。</string>
+    <string name="diagnostic_save_failed">保存失败，请重试。</string>
 </resources>

@@ -3,6 +3,7 @@ package info.jevqq.analyst
 import android.accessibilityservice.AccessibilityService
 import android.graphics.Point
 import android.graphics.Rect
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.WindowManager
@@ -81,12 +82,22 @@ class QqAccessibilityService : AccessibilityService() {
         val screen = Point()
         @Suppress("DEPRECATION")
         (getSystemService(WINDOW_SERVICE) as WindowManager).defaultDisplay.getRealSize(screen)
-        val snapshot = QqParser(screen.x, screen.y)
-            .parse(copyTree(root, 0, intArrayOf(0)))
+        val tree = copyTree(root, 0, intArrayOf(0))
+        val snapshot = QqParser(screen.x, screen.y).parse(tree)
         if (snapshot == null) {
             recordStatus("QQ 已在前台，但未识别到聊天输入框；请进入具体聊天页")
             clearVisible()
             return
+        }
+        val diagnostic = getSharedPreferences("capture_diagnostic", MODE_PRIVATE)
+        if (diagnostic.getBoolean("capture_requested", false)) {
+            val qqVersion = runCatching {
+                @Suppress("DEPRECATION")
+                packageManager.getPackageInfo(QQ_PACKAGE, 0).versionName.orEmpty()
+            }.getOrDefault("unknown")
+            diagnostic.edit().putString("ui_tree", QqTreeDiagnostic.report(
+                tree, screen.x, screen.y, Build.MODEL, Build.VERSION.SDK_INT, qqVersion,
+            )).putBoolean("capture_requested", false).apply()
         }
         val currentFingerprint = buildString {
             append(snapshot.title)
@@ -200,6 +211,7 @@ class QqAccessibilityService : AccessibilityService() {
             bounds = UiBounds(rect.left, rect.top, rect.right, rect.bottom),
             visible = node.isVisibleToUser,
             children = children,
+            className = node.className?.toString().orEmpty(),
         )
     }
 

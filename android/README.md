@@ -44,6 +44,10 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 如果没有出现面板，返回 Jev · QQ 设置页，查看底部“最近 QQ 识别状态”。这个状态只记录识别阶段和条数，不保存聊天标题或正文；它可区分尚未进入聊天页、会话标题未识别和当前没有可分析文字。
 
+### 不连接电脑，导出兼容性诊断
+
+从 v0.6.1 起，若 QQ 聊天页显示“会话标题未识别”或没有可见消息，可在 Jev · QQ 设置页底部点“准备一次 QQ 节点采集”，进入**具体聊天页**并停留一秒，再返回设置页点“导出脱敏节点报告”，把 `jev-qq-ui-tree.json` 发给开发者。报告只含 QQ 节点的资源 ID、控件类型、屏幕位置、树层级以及是否有文字/描述，不含聊天标题、正文、描述内容或 API Key；还会记录手机型号、Android API 和 QQ 版本。采集仅在手动准备后的下一次聊天页进行，不需要 USB。分享前仍可自行打开文件检查。请勿直接发送带有聊天内容或密钥的页面截图。
+
 当前解析规则参考 [QQAdapter](https://github.com/jev-chat/jev-chat-jarvis/blob/main/app/src/main/java/com/jev/probe/capture/ChatAppAdapter.kt#L170-L231) 的 QQ 资源 ID，并在上述实测组合中支持左侧“资料卡”头像定位长文本的发送者。QQ 版本、设备和消息类型会改变无障碍树；无法确定方向的消息不会被分析。若出现漏读或误判，请记录手机型号、Android 与 QQ 版本，并提供**去掉私人内容**的页面结构或复现说明。
 
 ## 本地测试

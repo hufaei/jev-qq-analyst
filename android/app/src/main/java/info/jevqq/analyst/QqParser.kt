@@ -17,6 +17,7 @@ data class UiNode(
     val bounds: UiBounds,
     val visible: Boolean = true,
     val children: List<UiNode> = emptyList(),
+    val className: String = "",
 )
 
 enum class Side { ME, THEM, UNKNOWN }

@@ -32,6 +32,7 @@ class MainActivity : Activity() {
     private lateinit var testButton: Button
     private lateinit var serviceStatus: TextView
     private lateinit var captureStatus: TextView
+    private lateinit var diagnosticStatus: TextView
     private var savedKey = ""
     private var activeMode = EndpointMode.JEV
     private val draftUrls = mutableMapOf<EndpointMode, String>()
@@ -132,6 +133,22 @@ class MainActivity : Activity() {
             setText(R.string.open_accessibility_settings)
             setOnClickListener { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
         }, fullWidth())
+        root.addView(text(R.string.diagnostic_title, 18f))
+        root.addView(text(R.string.diagnostic_guidance, 14f))
+        diagnosticStatus = text(R.string.diagnostic_empty, 14f)
+        root.addView(diagnosticStatus)
+        root.addView(Button(this).apply {
+            setText(R.string.diagnostic_arm)
+            setOnClickListener {
+                getSharedPreferences("capture_diagnostic", MODE_PRIVATE).edit()
+                    .remove("ui_tree").putBoolean("capture_requested", true).apply()
+                diagnosticStatus.setText(R.string.diagnostic_waiting)
+            }
+        }, fullWidth())
+        root.addView(Button(this).apply {
+            setText(R.string.diagnostic_export)
+            setOnClickListener { exportDiagnostic() }
+        }, fullWidth())
 
         modes.check(if (activeMode == EndpointMode.JEV) jev.id else gateway.id)
         keySection.visibility = if (activeMode == EndpointMode.JEV) View.VISIBLE else View.GONE
@@ -155,7 +172,41 @@ class MainActivity : Activity() {
             captureStatus.text = getSharedPreferences("capture_diagnostic", MODE_PRIVATE)
                 .getString("last_qq_status", null)?.let { getString(R.string.capture_status, it) }
                 ?: getString(R.string.capture_status_empty)
+            val diagnostic = getSharedPreferences("capture_diagnostic", MODE_PRIVATE)
+            diagnosticStatus.setText(when {
+                diagnostic.contains("ui_tree") -> R.string.diagnostic_ready
+                diagnostic.getBoolean("capture_requested", false) -> R.string.diagnostic_waiting
+                else -> R.string.diagnostic_empty
+            })
         }
+    }
+
+    private fun exportDiagnostic() {
+        val report = getSharedPreferences("capture_diagnostic", MODE_PRIVATE)
+            .getString("ui_tree", null)
+        if (report == null) {
+            diagnosticStatus.setText(R.string.diagnostic_empty)
+            return
+        }
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+            putExtra(Intent.EXTRA_TITLE, "jev-qq-ui-tree.json")
+        }
+        startActivityForResult(intent, DIAGNOSTIC_SAVE_REQUEST)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != DIAGNOSTIC_SAVE_REQUEST || resultCode != RESULT_OK) return
+        val report = getSharedPreferences("capture_diagnostic", MODE_PRIVATE)
+            .getString("ui_tree", null) ?: return
+        val uri = data?.data ?: return
+        val saved = runCatching {
+            contentResolver.openOutputStream(uri)?.use { it.write(report.toByteArray(Charsets.UTF_8)) }
+                ?: error("Cannot open selected file")
+        }.isSuccess
+        diagnosticStatus.setText(if (saved) R.string.diagnostic_saved else R.string.diagnostic_save_failed)
     }
 
     private fun selectedSettings(): ConnectionSettings {
@@ -227,4 +278,8 @@ class MainActivity : Activity() {
         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
+
+    private companion object {
+        const val DIAGNOSTIC_SAVE_REQUEST = 42
+    }
 }
