@@ -1,6 +1,10 @@
 # 常见问题
 
-当前版本分析 macOS QQ 窗口中可见的对方消息。完整启动步骤见 [README](../README.md#快速开始)，数据流向见 [隐私说明](../PRIVACY.md)。
+项目有 macOS 和 Android 两个入口。macOS 启动步骤见 [README](../README.md#macos-快速开始)，Android 可直接从 [Release 下载 APK](https://github.com/hufaei/jev-qq-analyst/releases/latest/download/jev-qq-analyst-android.apk)，设置与 USB 调试见 [Android 使用说明](../android/README.md)，数据流向见 [隐私说明](../PRIVACY.md)。以下网关、配置文件和日志条目适用于 macOS 端。
+
+## Android 手机怎样连接 Mac 测试？
+
+Android 直接连接用户填写的 Jev HTTPS 接口时，不需要 Mac 或 USB。若要用 Mac 构建、调试或连接 Mac 上的 Decision Infra，打开手机 USB 调试并允许这台 Mac，运行 `adb devices -l` 确认设备状态为 `device`。连接本机网关还需运行 `adb reverse tcp:8080 tcp:8080`；只填 `127.0.0.1` 而不反向映射会连接到手机本机。
 
 ## 配置文件和日志在哪里？
 
@@ -24,7 +28,7 @@
 
 ## 应用会下载本地模型或生成回复吗？
 
-当前应用只通过 Decision Infra 做结构化判断，不下载本地判断模型，也没有生成、复制、填入或发送回复功能。
+macOS 端通过 Decision Infra 做结构化判断；Android 端可直连用户填写的 Jev 兼容接口，也可用 Decision Infra。两端均不下载本地判断模型，也没有生成、复制、填入或发送回复功能。
 
 ## 还有问题？
 

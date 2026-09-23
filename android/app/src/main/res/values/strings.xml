@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_description">仅在 QQ 位于前台时读取当前聊天的可见文字，通过你配置的 Jev API 或 Decision Infra 网关分析对方消息。不会截图、滚动或发送消息。</string>
+    <string name="app_title">Jev · QQ 可见消息分析</string>
+    <string name="app_summary">分析当前 QQ 聊天中对方的可见文字。自己的消息只作上下文；不会生成、填写或发送回复。</string>
+    <string name="endpoint_mode">判断服务</string>
+    <string name="mode_jev">Jev API（URL + API Key）</string>
+    <string name="mode_gateway">Decision Infra 网关（无需在本应用填写 Key）</string>
+    <string name="endpoint_url">接口 URL</string>
+    <string name="endpoint_hint">使用完整 /v1/systemone 地址。Android 的 127.0.0.1 指手机本机；外部地址请使用 HTTPS。</string>
+    <string name="model_route">精确模型路由</string>
+    <string name="api_key_label">Jev API Key</string>
+    <string name="api_key_new">输入 API Key</string>
+    <string name="api_key_saved">已保存密钥；留空沿用</string>
+    <string name="api_key_hint">密钥由 Android Keystore 加密保存，不会发送给 Decision Infra 网关。</string>
+    <string name="api_key_required">请先填写 Jev API Key。</string>
+    <string name="clear_key">清除已保存密钥</string>
+    <string name="key_clear_pending">密钥将在点击“保存设置”后清除。</string>
+    <string name="save_settings">保存设置</string>
+    <string name="test_connection">测试连接</string>
+    <string name="settings_ready">可以先测试连接，再开启辅助功能服务。</string>
+    <string name="settings_saved">设置已保存。返回 QQ 后会使用新设置。</string>
+    <string name="settings_error">设置或连接失败。</string>
+    <string name="testing_connection">正在用合成问候测试连接…</string>
+    <string name="connection_ok">连接成功 · %1$s</string>
+    <string name="accessibility_title">开启 QQ 可见消息分析</string>
+    <string name="accessibility_guidance">打开系统辅助功能设置，找到“Jev · QQ 可见消息分析”并开启。随后返回 QQ 聊天页。服务只在 QQ 位于前台时读取当前可见文字。</string>
+    <string name="accessibility_on">辅助功能服务：已开启</string>
+    <string name="accessibility_off">辅助功能服务：未开启</string>
+    <string name="capture_status_empty">最近 QQ 识别状态：尚未检查。进入具体聊天页后返回这里查看。</string>
+    <string name="capture_status">最近 QQ 识别状态：%1$s</string>
+    <string name="open_accessibility_settings">打开辅助功能设置</string>
+</resources>

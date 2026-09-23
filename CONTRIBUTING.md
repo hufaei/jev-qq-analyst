@@ -1,6 +1,6 @@
 # 贡献指南
 
-当前产品分析 macOS QQ 当前窗口内可见的对方消息：`src/qq_ax.py` 负责辅助功能（AX）读取，`src/decision_infra.py` 请求 Decision Infra，`src/hud.py` 显示逐条判断。自己的消息只作上下文。功能与隐私边界见 [README](README.md) 和 [PRIVACY.md](PRIVACY.md)。
+当前产品分析 macOS 与 Android QQ 当前聊天中可见的对方文字。macOS 端由 `src/qq_ax.py` 读取辅助功能（AX）节点、`src/decision_infra.py` 请求 Decision Infra、`src/hud.py` 显示判断；Android 端位于 `android/`，使用无障碍服务读取、Jev 兼容接口判断和悬浮面板展示。自己的消息只作上下文。功能与隐私边界见 [README](README.md) 和 [PRIVACY.md](PRIVACY.md)。
 
 ## 开工前认领 issue
 
@@ -35,6 +35,7 @@ CI 在 PR 和 `main` push 上运行以下离线测试；本地先运行同一命
 ```bash
 uv run python -B -m unittest discover -s tests
 uv run python -B probe/bootstrap_regression.py
+cd android && ./gradlew :app:testDebugUnitTest :app:assembleDebug
 ```
 
 测试使用合成数据，不读取真实聊天，也不调用 Provider。按改动范围补充检查：
@@ -45,6 +46,7 @@ uv run python -B probe/bootstrap_regression.py
 | Decision Infra 请求、配置或响应 | 确认 `tests/test_decision_infra.py` 与 `tests/test_settings.py` 覆盖改动；在已配置的网关验证精确路由与错误显示 |
 | HUD 显示、轮询或缓存 | `./preview.command` 检查合成卡片；真实 QQ 中检查前台切换、滚动后缓存和逐条分析 |
 | 设置窗口 | `uv run python -B probe/settings_smoke.py` 检查真实设置界面、临时配置保存与本机假网关测试 |
+| Android QQ 解析或悬浮窗 | 在 Android 目录运行 Gradle 测试与构建，并在真实 QQ 聊天页检查普通/长消息、自己与对方、前台切换及悬浮窗 |
 
 真实 QQ 验收需要 macOS“辅助功能”授权。`preview.command` 不读 QQ、不调用网关，不能代替实际接入验证。修改用户可见行为请同步 README；修改配置或数据流向请同步 `.env.example`、FAQ 与隐私说明。
 
@@ -52,7 +54,7 @@ uv run python -B probe/bootstrap_regression.py
 
 - 只读取 QQ 已加载、可见的辅助功能节点。不截图、不 OCR、不读数据库、不注入、不 hook、不自动滚动。
 - 不确定收发方向时不要请求模型；引用只作背景。自己的消息不单独分析。
-- QQ 应用不保存 Provider Key，也不直连 TypeSafe；模型 ID 是 Decision Infra 的精确路由，不静默切换模型。
+- macOS 应用不保存 Provider Key，只连接 Decision Infra。Android 直连模式使用用户填写的 Jev URL 与 API Key，网关模式不发送该 Key；两端均不静默切换模型。
 - 当前应用只分析 QQ 消息，不生成、复制、填入或发送回复。
 
 更具体的入口与改动注意事项见 [AGENTS.md](AGENTS.md)。

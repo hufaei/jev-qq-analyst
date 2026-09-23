@@ -73,3 +73,13 @@ htmlcov/
 # Agent 指令文件 —— 全局 ignore 忽略了 AGENTS.md，本项目要求入库
 # ══════════════════════════════════════════════════════════════
 !AGENTS.md
+
+# Android / Gradle
+.gradle/
+.kotlin/
+local.properties
+*.apk
+*.aab
+*.hprof
+*.jks
+*.keystore

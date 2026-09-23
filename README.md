@@ -1,12 +1,51 @@
-# jev-qq-analyst
+# Jev · QQ 可见消息分析
 
-读取 macOS QQ 当前窗口内可见的对方文字消息，通过 [Decision Infra](https://github.com/hufaei/decision-infra) 精确路由 `jev-latest`，逐条显示意图、情绪、风险和下一步；自己的文字只作上下文，媒体仅显示类型占位，不作为分析目标，也不生成回复。
+<p align="center">
+  <strong>看懂当前聊天，不替你回复。</strong><br>
+  在 macOS 与 Android QQ 的当前聊天页，逐条分析屏幕上可见的对方文字。
+</p>
 
-> QQ 应用只连接 Decision Infra，不保存 Provider Key。Key、Provider 和模型生命周期由 Decision Infra 管理；网关失败时不会切换模型。
+<p align="center">
+  <a href="https://github.com/hufaei/jev-qq-analyst/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/hufaei/jev-qq-analyst?label=Release&color=398269"></a>
+  <a href="https://github.com/hufaei/jev-qq-analyst/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/hufaei/jev-qq-analyst/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-Android-7F52FF?logo=kotlin&logoColor=white">
+  <img alt="Python" src="https://img.shields.io/badge/Python-macOS-3776AB?logo=python&logoColor=white">
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-72797E"></a>
+</p>
 
-> 当前版本不截图、不 OCR、不读取 QQ 数据库、不注入、不 hook，也不会自动发送或填入消息。它只处理本人设备、本人账号、QQ 当前窗口已经加载的文字节点。
+**下载 Android APK：** [最新版安装包](https://github.com/hufaei/jev-qq-analyst/releases/latest/download/jev-qq-analyst-android.apk) · [所有版本与 SHA-256 校验值](https://github.com/hufaei/jev-qq-analyst/releases) · [Android 详细说明](android/README.md)
 
-## 快速开始
+## 一眼看懂
+
+| | Android | macOS |
+| --- | --- | --- |
+| 读取方式 | QQ 前台聊天页的无障碍节点 | QQ 前台窗口的辅助功能节点 |
+| 判断服务 | 用户填写的 Jev 兼容 HTTPS URL 与 API Key，或本机 Decision Infra | 本机 Decision Infra，精确路由 `jev-latest` |
+| 展示 | 可拖动、缩放、折叠的半透明悬浮面板 | QQ 旁的悬浮窗 |
+| 安装要求 | Android 8.0+（APK 的最低系统版本） | Apple Silicon、macOS 13+、Python 3.12 |
+
+对方的文字各有一张分析卡，显示**意图、情绪、回复风险、是否值得回复、意图候选和下一步策略**。自己的消息只作上下文；可识别的图片、表情和文件只显示类型占位。分析只针对当前已加载、屏幕上可见的内容。
+
+> [!NOTE]
+> Android 真机已在 **Xiaomi 17 Pro · Android 16（API 36）· HyperOS 3.0.319.0.WBLCNXM · QQ 9.3.55** 上验证：可识别普通与长文本对方消息，并完成 Jev 分析。Android 8.0+ 是安装下限；其他手机、系统和 QQ 版本的识别效果仍需实测。
+
+<p align="center">
+  <a href="docs/images/android-settings-xiaomi17pro.png"><img src="docs/images/android-settings-xiaomi17pro.png" width="280" alt="Xiaomi 17 Pro 上的 Android 版设置页，提供 Jev URL、模型路由与 API Key 配置"></a><br>
+  <sub>Android 设置页实机截图 · 点击查看原图</sub>
+</p>
+
+## Android 快速开始
+
+1. 在手机上安装 [Release APK](https://github.com/hufaei/jev-qq-analyst/releases/latest/download/jev-qq-analyst-android.apk)。**正常使用不需要连接 Mac 或 USB。**
+2. 打开 **Jev · QQ 可见消息分析**，填写 Jev 兼容的完整 HTTPS `/v1/systemone` URL、模型路由和对应 API Key；点“保存设置”及“测试连接”。
+3. 在系统“辅助功能”里开启 **Jev · QQ 可见消息分析**，然后进入一个 QQ 聊天页。面板只在 QQ 位于前台时出现。
+
+需要从源码构建、连接本机 Decision Infra 或排查无障碍节点时，参见 [Android 使用说明](android/README.md)。此前自行安装的 debug APK 与 Release APK 签名不同；切换到 Release 版前需要卸载 debug 版并重新填写设置。
+
+> [!IMPORTANT]
+> 应用不截图、不 OCR、不读取 QQ 数据库、不注入、不 hook，也不生成、复制、填入或发送回复。Android 直连 Jev 时，API Key 由 Android Keystore 在手机本地加密保存；macOS 端只连接 Decision Infra。完整数据流向见 [隐私说明](PRIVACY.md)。
+
+## macOS 快速开始
 
 要求：Apple Silicon Mac、macOS 13+、已登录的 QQ，以及本机运行的 [Decision Infra](https://github.com/hufaei/decision-infra)。本项目使用 Python 3.12 和 `uv`；`start.command` 会在缺少 `uv` 时尝试安装。启动 infra 需要 Node.js 22+ 和 pnpm 12.5.1。
 

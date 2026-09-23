@@ -80,7 +80,7 @@ class DecisionInfraTests(unittest.TestCase):
 
     def test_exact_route_structured_state_and_no_app_key(self):
         result = decision_infra.DecisionInfraJudge(self.base, "jev-latest").judge(
-            "这个事情今天能搞定吗？", "对方：上周安排的任务")
+            "这个事情今天能搞定吗？", "对方：上周安排的任务", "上周说今天完成")
         path, headers, body = Server.requests[0]
         self.assertEqual(path, "/v1/systemone")
         self.assertNotIn("authorization", {k.lower(): v for k, v in headers.items()})
@@ -88,7 +88,20 @@ class DecisionInfraTests(unittest.TestCase):
         self.assertEqual(body["state"], {
             "message": "这个事情今天能搞定吗？",
             "context": "对方：上周安排的任务",
+            "quote": "上周说今天完成",
         })
+        expected_types = {
+            "intent": "choice", "risk": "score", "behavior": "choice",
+            "emotion": "choice", "need": "choice", "reply_needed": "noul",
+            "indirect_request": "noul", "pressure": "noul", "boundary": "noul",
+            **{f"action_{name}": "score" for name in (
+                "pause", "empathize", "answer", "clarify", "update", "schedule",
+                "help", "repair", "boundary", "decline", "arrange", "appreciate",
+            )},
+        }
+        self.assertEqual(len(body["questions"]), 21)
+        self.assertEqual({name: question["type"] for name, question in
+                          body["questions"].items()}, expected_types)
         self.assertEqual(result["backend"], "infra/jev-latest")
         self.assertEqual(result["intent"], "催进度")
         self.assertEqual(result["risk"], 4.2)
