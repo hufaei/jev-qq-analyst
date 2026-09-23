@@ -144,7 +144,7 @@ class HudController(NSObject):
 
     @objc.python_method
     def _install_visible_list(self):
-        """Show peer verdicts and compact own-message context in visible order."""
+        """Show peer verdicts, own context, and unanalyzed media in visible order."""
         self._visible_signature = None
         self._visible_targets = ()
         self._visible_display_rows = ()
@@ -208,19 +208,48 @@ class HudController(NSObject):
         return chip
 
     @objc.python_method
+    def _peer_message_height(self, text: str) -> int:
+        """Use the space the original message needs, up to three visible lines."""
+        attributed = AppKit.NSAttributedString.alloc().initWithString_attributes_(
+            text or " ", {AppKit.NSFontAttributeName: AppKit.NSFont.systemFontOfSize_(13)})
+        bounds = attributed.boundingRectWithSize_options_(
+            NSMakeSize(340, 1000),
+            AppKit.NSStringDrawingUsesLineFragmentOrigin
+            | AppKit.NSStringDrawingUsesFontLeading)
+        return max(20, min(47, int(bounds.size.height + 2.999)))
+
+    @objc.python_method
     def _draw_visible_cards(self):
         targets = self._visible_targets
         display_rows = self._visible_display_rows
-        document_h = max(194, sum((320 if key is not None else 54) + 8
-                                  for _message, key in display_rows))
+        row_layouts = []
+        for message, key in display_rows:
+            if getattr(message, "kind", "text") != "text":
+                row_layouts.append((50, 0))
+                continue
+            shift = 0 if key is None else 47 - self._peer_message_height(message.text)
+            row_layouts.append((54 if key is None else 320 - shift, shift))
+        document_h = max(194, sum(height + 8 for height, _shift in row_layouts))
         old_y = self._visible_scroll.contentView().bounds().origin.y
         document = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, PANEL_W - 28, document_h))
         cursor = document_h
         peer_index = 0
-        for message, key in display_rows:
-            card_h = 320 if key is not None else 54
+        for (message, key), (card_h, shift) in zip(display_rows, row_layouts):
             cursor -= card_h + 8
             y = cursor + 8
+            if getattr(message, "kind", "text") != "text":
+                own = message.side == "me"
+                card = ui_style.make_surface(
+                    10, PALETTE["own_row"] if own else PALETTE["row"])
+                card.setFrame_(NSMakeRect(28 if own else 0, y,
+                                         PANEL_W - 56 if own else PANEL_W - 28, card_h))
+                document.addSubview_(card)
+                sender = "我" if own else message.sender or "对方"
+                self._card_label(card, f"{sender} · 仅显示", 12, 6, 302, 14, 9,
+                                 PALETTE["muted"], card_height=card_h)
+                self._card_label(card, message.text, 12, 23, 302, 20, 11,
+                                 PALETTE["own_text"], card_height=card_h)
+                continue
             if key is None:
                 card = ui_style.make_surface(10, PALETTE["own_row"], PALETTE["own_edge"])
                 card.setFrame_(NSMakeRect(28, y, PANEL_W - 56, card_h))
@@ -243,12 +272,12 @@ class HudController(NSObject):
                                             10, PALETTE["muted"], card_height=card_h)
             if quote:
                 header_label.setToolTip_(f"引用：{quote}")
-            self._card_label(card, message.text, 14, 30, 340, 47,
+            self._card_label(card, message.text, 14, 30, 340, 47 - shift,
                              13, PALETTE["text"], False, 3, card_h)
             verdict = self.memory.get_verdict(key)
             error = self._visible_errors.get(key)
             if verdict is None:
-                self._card_label(card, error or "分析中…", 14, 86, 340, 20,
+                self._card_label(card, error or "分析中…", 14, 86 - shift, 340, 20,
                                  12, PALETTE["red"] if error else PALETTE["muted"],
                                  card_height=card_h)
                 continue
@@ -256,27 +285,31 @@ class HudController(NSObject):
             risk_color = (PALETTE["green"] if risk <= 3 else
                           PALETTE["amber"] if risk <= 6 else PALETTE["red"])
             emotion = verdict.get("emotion") if verdict.get("emotion_confidence", 0) >= .45 else "难判断"
-            self._card_label(card, f"{verdict.get('intent', '—')}   ·   {emotion or '难判断'}",
-                             14, 84, 252, 22, 14, PALETTE["text"], True,
-                             card_height=card_h)
-            self._card_label(card, f"{risk}/9", 298, 86, 58, 19, 12, risk_color, True,
+            intent_label = self._card_label(
+                card, f"{verdict.get('intent', '—')}   ·   {emotion or '难判断'}",
+                14, 84 - shift, 224, 22, 14, PALETTE["text"], True,
+                card_height=card_h)
+            intent_label.cell().setLineBreakMode_(AppKit.NSLineBreakByTruncatingTail)
+            self._card_label(card, f"回复风险 {risk}/9", 244, 86 - shift, 112, 19,
+                             12, risk_color, True,
                              card_height=card_h)
             reply_probability = verdict.get("reply_probability")
             if reply_probability is None:
                 reply_bg, reply_ink = PALETTE["prob_low_bg"], PALETTE["prob_low_text"]
-                reply_label = "是否回复 · 待判断"
+                reply_label = "是否值得回复 · 待判断"
             elif reply_probability < .40:
                 reply_bg, reply_ink = PALETTE["prob_high_bg"], PALETTE["prob_high_text"]
-                reply_label = f"现在回复 {reply_probability:.0%}"
+                reply_label = f"是否值得回复 · {reply_probability:.0%}"
             elif reply_probability <= .60:
                 reply_bg, reply_ink = PALETTE["reply_wait_bg"], PALETTE["amber"]
-                reply_label = f"现在回复 {reply_probability:.0%}"
+                reply_label = f"是否值得回复 · {reply_probability:.0%}"
             else:
                 reply_bg, reply_ink = PALETTE["reply_yes_bg"], PALETTE["green"]
-                reply_label = f"现在回复 {reply_probability:.0%}"
-            self._card_chip(card, reply_label, 14, 112, 150, reply_bg, reply_ink, card_h)
+                reply_label = f"是否值得回复 · {reply_probability:.0%}"
+            self._card_chip(card, reply_label, 14, 112 - shift, 340,
+                            reply_bg, reply_ink, card_h)
             ranked_intents = verdict.get("intent_ranking") or []
-            self._card_label(card, "意图可能", 14, 149, 50, 14, 9, PALETTE["muted"],
+            self._card_label(card, "意图可能", 14, 149 - shift, 50, 14, 9, PALETTE["muted"],
                              card_height=card_h)
             for index, item in enumerate(ranked_intents[:3]):
                 probability = item["probability"]
@@ -284,21 +317,26 @@ class HudController(NSObject):
                         "mid" if probability >= .25 else "low")
                 self._card_chip(
                     card, f"{item['label']} {probability:.0%}", 66 + index * 98,
-                    144, 90, PALETTE[f"prob_{tone}_bg"],
+                    144 - shift, 90, PALETTE[f"prob_{tone}_bg"],
                     PALETTE[f"prob_{tone}_text"], card_h)
             behavior = verdict.get("behavior") if verdict.get("behavior_confidence", 0) >= .45 else "—"
             need = verdict.get("need") if verdict.get("need_confidence", 0) >= .45 else "—"
-            self._card_label(card, f"行为 {behavior}   ·   需要 {need}",
-                             14, 175, 340, 18, 11, PALETTE["muted"],
-                             card_height=card_h)
+            for x, title, value in ((14, "行为", behavior), (190, "需要", need)):
+                pill = ui_style.make_surface(8, PALETTE["metadata_pill"])
+                pill.setFrame_(NSMakeRect(x, card_h - (175 - shift) - 24, 164, 24))
+                card.addSubview_(pill)
+                label = self._card_label(pill, f"{title} · {value}", 10, 4, 144, 16,
+                                         10, PALETTE["metadata_text"],
+                                         card_height=24)
+                label.cell().setLineBreakMode_(AppKit.NSLineBreakByTruncatingTail)
             signals = " · ".join(verdict.get("signal_labels", [])[:2])
-            self._card_label(card, signals, 14, 198, 340, 15, 10,
+            self._card_label(card, signals, 14, 203 - shift, 340, 15, 10,
                              PALETTE["muted"], card_height=card_h)
-            self._card_label(card, "下一步", 14, 222, 340, 15, 10,
+            self._card_label(card, "下一步", 14, 222 - shift, 340, 15, 10,
                              PALETTE["muted"], True, card_height=card_h)
             ranked_actions = verdict.get("action_rankings", [])[:3]
             for index, item in enumerate(ranked_actions):
-                row_top = 242 + index * 24
+                row_top = 242 - shift + index * 24
                 row = ui_style.make_surface(6, PALETTE["action_row"])
                 row.setFrame_(NSMakeRect(12, card_h - row_top - 22, 348, 22))
                 card.addSubview_(row)
@@ -313,7 +351,7 @@ class HudController(NSObject):
                 self._card_label(row, f"{item['score']:.1f}/4", 282, 2, 58, 18, 10,
                                  score_color, True, card_height=22)
             if not ranked_actions:
-                self._card_label(card, "暂无可靠建议", 14, 243, 340, 18, 11,
+                self._card_label(card, "暂无可靠建议", 14, 243 - shift, 340, 18, 11,
                                  PALETTE["muted"], card_height=card_h)
         self._visible_scroll.setDocumentView_(document)
         self._visible_document = document
@@ -326,7 +364,7 @@ class HudController(NSObject):
         self._visible_reset_scroll = False
         ready = sum(self.memory.get_verdict(key) is not None for _message, key in targets)
         status = (f"对方 {len(targets)} 条 · 已分析 {ready} 条" if targets else
-                  "当前窗口没有可分析的对方消息")
+                  "当前窗口没有可分析的对方文字")
         self._render("status", status, PALETTE["muted"])
 
     def applyVisibleRows_(self, epoch):
@@ -343,6 +381,10 @@ class HudController(NSObject):
         display_rows = []
         prior_incoming = ""
         for message in messages:
+            if getattr(message, "kind", "text") != "text":
+                if message.side in ("me", "them"):
+                    display_rows.append((message, None))
+                continue
             if not message.text.strip():
                 continue
             if message.side == "me":
@@ -354,7 +396,8 @@ class HudController(NSObject):
             targets.append((message, key))
             display_rows.append((message, key))
             prior_incoming = message.text
-        signature = (chat, tuple((message.side, message.sender or "", message.text,
+        signature = (chat, tuple((message.side, message.sender or "",
+                                  getattr(message, "kind", "text"), message.text,
                                   getattr(message, "quoted_text", ""), key)
                                  for message, key in display_rows))
         if signature == self._visible_signature:
@@ -747,7 +790,7 @@ def main() -> None:
         # Synthetic, offline visual acceptance. Never reads QQ or calls the gateway.
         controller.applyChat_("对话预览")
         examples = (
-            ("这件事今天能有个结果吗？🙂", "催进度", "着急", "时间承诺", 4.2),
+            ("这件事今天能有个结果吗？🙂", "催进度", "着急", "明确时间", 4.2),
             ("我还想确认一下时间。", "求确认", "平静", "确认", 2.1),
         )
         targets = []
@@ -769,8 +812,8 @@ def main() -> None:
                 "reply_probability": .76,
                 "action_rankings": [
                     {"id": "answer", "label": "直接回答对方的问题", "score": 3.8},
-                    {"id": "schedule", "label": "给出可信的时间安排", "score": 3.4},
-                    {"id": "clarify", "label": "先澄清对方具体指什么", "score": 2.9},
+                    {"id": "schedule", "label": "说清楚什么时候能处理", "score": 3.4},
+                    {"id": "clarify", "label": "先问清楚对方的意思", "score": 2.9},
                 ],
                 "signal_labels": ["可能有隐含请求"],
                 "actions": ["先给明确答复", "确认时间"],
@@ -781,6 +824,10 @@ def main() -> None:
             if len(display_rows) == 1:
                 display_rows.append((SimpleNamespace(
                     side="me", sender=None, text="我先确认一下，稍后回复你。"), None))
+                display_rows.append((SimpleNamespace(
+                    side="them", sender="对方", kind="image", text="【图片】"), None))
+                display_rows.append((SimpleNamespace(
+                    side="me", sender=None, kind="file", text="【文件】"), None))
         controller._visible_targets = tuple(targets)
         controller._visible_display_rows = tuple(display_rows)
         controller._visible_signature = ("对话预览", tuple(key for _item, key in targets))

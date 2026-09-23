@@ -1,6 +1,6 @@
 # AGENTS.md
 
-本仓库的当前产品是 macOS QQ 可见消息分析悬浮窗：从 QQ 辅助功能（AX）树读取当前窗口的文字，经 Decision Infra `/v1/systemone` 精确路由 `jev-latest`，逐条分析对方消息。自己的消息只作上下文。当前界面不生成、复制、填入或发送回复。详见 [README](README.md) 与 [隐私说明](PRIVACY.md)。
+本仓库的当前产品是 macOS QQ 可见消息分析悬浮窗：从 QQ 辅助功能（AX）树读取当前窗口的文字，经 Decision Infra `/v1/systemone` 精确路由 `jev-latest`，逐条分析对方文字消息。自己的文字只作上下文；可识别的媒体只显示固定类型占位，不进入判断或上下文。当前界面不生成、复制、填入或发送回复。详见 [README](README.md) 与 [隐私说明](PRIVACY.md)。
 
 ## 当前入口
 
@@ -26,6 +26,7 @@ uv run python src/qq_ax.py
 
 - 保持读取当前 QQ 窗口已加载内容的边界：不截图、不 OCR、不读 QQ 数据库、不注入、不 hook、不自动滚动，不自动填入或发送。
 - 收发方向不明确的消息不应触发判断；引用文字只能作为背景，不能冒充新消息的发送者或正文。
+- 图片、表情和文件等媒体占位仅用于界面定位：不把文件名、图片描述或占位文字送给 Decision Infra，也不把它们放进后续消息的上下文。
 - Provider Key 只放在 Decision Infra；QQ 客户端只持有网关地址与精确模型 ID。不要从旧 `TYPESAFE_*`、`OPENAI_*`、`ANTHROPIC_*` 路径接入当前 HUD。
 - 模型调用放在工作线程，界面和 QQ 前台状态变化后不得显示过期分析。修改这些边界时，补对应回归并手动检查真实 QQ。
 - 用户可见行为变化要同步 README；配置和数据流向变化还要同步 `.env.example`、FAQ、PRIVACY。贡献与 issue 认领流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。

@@ -11,6 +11,10 @@ from collections import OrderedDict
 from threading import Lock
 
 
+def _is_text(message) -> bool:
+    return getattr(message, "kind", "text") == "text"
+
+
 def signature(message) -> tuple[str, str, str, str]:
     return (message.side, message.sender or "", message.text,
             getattr(message, "quoted_text", ""))
@@ -19,7 +23,7 @@ def signature(message) -> tuple[str, str, str, str]:
 def visible_incoming(messages: list) -> list:
     """Only counterpart bubbles are analysis targets; own text is context only."""
     return [message for message in messages
-            if message.side == "them" and message.text.strip()]
+            if _is_text(message) and message.side == "them" and message.text.strip()]
 
 
 class ConversationMemory:
@@ -40,6 +44,9 @@ class ConversationMemory:
         not evidence of a new incoming message.  A newly opened chat establishes
         its first visible tail as the baseline.
         """
+        # Media placeholders belong in the HUD, but never advance the text tail
+        # or enter the conversation history used for model context.
+        messages = [message for message in messages if _is_text(message)]
         current = tuple(signature(message) for message in messages)
         if not current:
             return False
@@ -92,6 +99,8 @@ class ConversationMemory:
     def context(self, chat: str, newest, visible: list, turns: int = 8,
                 max_chars: int = 2000) -> str | None:
         """Use recent observed turns before the target, bounded for one Jev call."""
+        if not _is_text(newest):
+            return None
         target = signature(newest)
         with self._lock:
             history = list(self._history.get(chat, []))
@@ -103,6 +112,7 @@ class ConversationMemory:
             visible_match = next((i for i, message in enumerate(visible)
                                   if signature(message) == target), len(visible))
         prior = history[:match] if match is not None else visible[:visible_match]
+        prior = [message for message in prior if _is_text(message)]
         lines = [f"{m.sender or ('我' if m.side == 'me' else '对方')}: "
                  + (f"[引用：{m.quoted_text}] " if getattr(m, "quoted_text", "") else "")
                  + m.text for m in prior[-turns:]]

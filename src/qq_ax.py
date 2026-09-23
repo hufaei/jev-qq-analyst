@@ -25,7 +25,7 @@ import Quartz
 
 @dataclass
 class Message:
-    """A text message visible in the current QQ accessibility tree."""
+    """A visible QQ row; non-text kinds carry display placeholders only."""
 
     text: str
     side: str  # them | me | unknown
@@ -37,6 +37,7 @@ class Message:
     lines: list[str] = field(default_factory=list)
     x: float = 0.0
     w: float = 0.0
+    kind: str = "text"  # text | image | sticker | file | attachment
 
 
 QQ_BUNDLE_ID = "com.tencent.qq"
@@ -247,6 +248,13 @@ def _at_live_bottom(message_list) -> bool | None:
 
 
 _GENERIC_IMAGE_LABELS = {"图片", "图像", "表情", "表情包", "动画表情", "image", "emoji", "gif"}
+_STICKER_LABELS = {"表情", "表情包", "动画表情", "贴图", "贴纸", "emoji", "sticker", "gif"}
+_FILE_LABELS = {"文件", "文件消息", "发送文件", "接收文件", "下载文件", "file", "file attachment"}
+_ATTACHMENT_LABELS = {"附件", "attachment"}
+_MEDIA_PLACEHOLDERS = {
+    "image": "【图片】", "sticker": "【表情】",
+    "file": "【文件】", "attachment": "【附件】",
+}
 
 
 def _static_text_nodes(root):
@@ -314,10 +322,31 @@ def _bubble_side(text_rect, viewport):
     return "unknown"
 
 
+def _message_side(sender_name, sender_container, avatar_side, viewport):
+    """Classify the row's sender, using its position when QQ names self by nickname.
+
+    The label ``我`` is explicit.  Other labels alone cannot establish that a
+    message came from the peer: QQ may label the sender on the right with the
+    account's display name too.  Only the row's sender node and its geometry are
+    considered here; quoted names are excluded by ``_sender_container``.
+    """
+    if sender_name == "我":
+        return "me"
+    if sender_container is not None:
+        sender_rect = _ax_rect(sender_container)
+        if sender_rect is not None:
+            side = _bubble_side(sender_rect, viewport)
+            if side != "unknown":
+                return side
+    return avatar_side
+
+
 _QUOTE_MARKERS = ("引用消息", "引用的消息", "回复消息", "回复的消息")
 _NON_SENDER_LABELS = {
     "消息", "消息内容", "聊天消息", "头像", "图片", "图像", "表情", "表情包",
-    "更多", "转发", "撤回", "删除", "复制", "回复", "引用", "时间",
+    "贴图", "贴纸", "文件", "文件消息", "附件", "file", "attachment",
+    "更多", "转发", "撤回",
+    "删除", "复制", "回复", "引用", "时间",
 }
 
 
@@ -371,11 +400,9 @@ def _without_sender_label(row, texts, sender_name, sender_container):
     """Drop only a dedicated sender label, never a matching quote/body string."""
     if sender_container is None or _same_element(row, sender_container):
         return texts
-    nested = _static_text_nodes(sender_container)
+    nested = [item for item in _static_text_nodes(sender_container)
+              if _ax_attr(item[0], AX.kAXRoleAttribute) == "AXStaticText"]
     if not nested or any(text != sender_name for _element, text, _rect in nested):
-        return texts
-    if not any(not any(_same_element(item[0], child[0]) for child in nested)
-               for item in texts):
         return texts
     return [item for item in texts if not any(
         _same_element(item[0], child[0]) for child in nested)]
@@ -392,7 +419,7 @@ def _split_quote(row, texts):
         descendants = _static_text_nodes(element)
         quoted = [item for item in texts if any(
             _same_element(item[0], nested[0]) for nested in descendants)]
-        if 0 < len(quoted) < len(texts):
+        if quoted:
             candidates.append((depth, quoted))
     if not candidates:
         return texts, ""
@@ -402,7 +429,71 @@ def _split_quote(row, texts):
         _same_element(item[0], quote[0]) for quote in quoted)]
     quote_text = "\n".join(item[1] for item in quoted
                            if item[1] not in _QUOTE_MARKERS).strip()
-    return body or texts, quote_text
+    return body, quote_text
+
+
+def _row_media(row, viewport, sender_container, avatar):
+    """Find a visible attachment without treating avatars or quoted media as new content."""
+    vx, _vy, vw, _vh = viewport
+    sender_rect = _ax_rect(sender_container) if sender_container is not None else None
+    sender_images = ([element for element, _depth in _walk(
+        [sender_container], max_nodes=2000, max_depth=16)
+        if _ax_attr(element, AX.kAXRoleAttribute) == "AXImage"]
+        if sender_container is not None else [])
+    gutter = min(72.0, vw * .14)
+    images = []
+    file_markers = []
+    queue = deque([(row, 0)])
+    visited = 0
+    while queue and visited < 2000:
+        element, depth = queue.popleft()
+        visited += 1
+        if depth > 16 or (depth > 0 and _is_quote_container(element)):
+            continue
+        role = _ax_attr(element, AX.kAXRoleAttribute)
+        rect = _ax_rect(element)
+        if rect is not None and _intersects(rect, viewport):
+            if role in {"AXGroup", "AXButton", "AXImage"}:
+                labels = {value.strip().casefold() for name in (
+                    AX.kAXDescriptionAttribute, AX.kAXTitleAttribute,
+                    AX.kAXValueAttribute, "AXName")
+                    if isinstance(value := _ax_attr(element, name), str)
+                    and value.strip()}
+                if labels & _FILE_LABELS:
+                    file_markers.append(("file", rect))
+                elif labels & _ATTACHMENT_LABELS:
+                    file_markers.append(("attachment", rect))
+            if role == "AXImage":
+                x, _y, w, h = rect
+                in_sender = any(_same_element(element, sender_image)
+                                for sender_image in sender_images)
+                outside_sender = (sender_rect is not None
+                                  and (x + w <= sender_rect[0] - 4
+                                       or x >= sender_rect[0] + sender_rect[2] + 4))
+                at_edge = (x <= vx + gutter / 2
+                           or x + w >= vx + vw - gutter / 2)
+                avatar_like = (28 <= w <= 72 and 28 <= h <= 72
+                               and abs(w - h) <= 8
+                               and (x + w / 2 <= vx + gutter
+                                    or x + w / 2 >= vx + vw - gutter)
+                               and (in_sender or (_same_element(element, avatar)
+                                                  and (outside_sender or
+                                                       (sender_rect is None and at_edge)))))
+                if not avatar_like:
+                    kind = ("sticker" if _ax_text(element).casefold()
+                            in _STICKER_LABELS else "image")
+                    images.append((kind, rect))
+        if depth < 16:
+            queue.extend((child, depth + 1) for child in
+                         list(_ax_attr(element, AX.kAXChildrenAttribute) or []))
+    if file_markers:
+        kind = "file" if any(item[0] == "file" for item in file_markers) else "attachment"
+        return kind, _union([rect for _kind, rect in file_markers] +
+                            [rect for _kind, rect in images])
+    if images:
+        kind = "image" if any(item[0] == "image" for item in images) else "sticker"
+        return kind, _union([rect for _kind, rect in images])
+    return None, None
 
 
 def _parse_message_list(message_list, window_rect,
@@ -420,29 +511,54 @@ def _parse_message_list(message_list, window_rect,
         # One-point-tall rows are Chromium's off-screen virtualisation placeholders.
         if row_rect is None or row_rect[3] <= 2 or not _intersects(row_rect, viewport):
             continue
+        # QQ also exposes sticker/image descriptions as AXImage text.  They are
+        # not a readable chat message, so keep only actual text nodes here.
         texts = [item for item in _static_text_nodes(row)
-                 if _intersects(item[2], viewport)]
-        if not texts:
-            continue                         # image/emoji-only row: no text to analyse
+                 if (_ax_attr(item[0], AX.kAXRoleAttribute) == "AXStaticText"
+                     and _intersects(item[2], viewport))]
         sender_name, sender_container = _sender_container(row)
         avatar_side, avatar = _avatar_side(row, texts, viewport)
-        side = (("me" if sender_name == "我" else "them") if sender_name
-                else avatar_side)
-        if avatar is not None:
-            texts = [item for item in texts if not _same_element(item[0], avatar)]
+        kind, media_rect = _row_media(row, viewport, sender_container, avatar)
+        if kind is not None and media_rect is not None:
+            side = _message_side(sender_name, sender_container, avatar_side, viewport)
+            if side == "unknown":
+                side = _bubble_side(media_rect, viewport)
+            if side == "unknown":
+                aligned_texts = [item[2] for item in texts
+                                 if not (abs(item[2][0] + item[2][2] / 2
+                                             - (vx + vw / 2)) <= vw * .10
+                                         and item[2][2] <= vw * .30)]
+                if aligned_texts:
+                    side = _bubble_side(_union(aligned_texts), viewport)
+            x, y, w, h = media_rect
+            placeholder = _MEDIA_PLACEHOLDERS[kind]
+            rows.append(Message(
+                text=placeholder, side=side,
+                sender=None,
+                y=max(0.0, (y - wy) / wh), conf=1.0,
+                h=max(0.0, h / wh), x=max(0.0, (x - wx) / ww),
+                w=max(0.0, w / ww), lines=[placeholder], kind=kind,
+            ))
+            continue
+        if not texts:
+            continue
+        side = _message_side(sender_name, sender_container, avatar_side, viewport)
         texts = _without_sender_label(row, texts, sender_name, sender_container)
         if not texts:
             continue
-        # QQ can put a centred timestamp and the following bubble in the *same* row.
-        # Remove only small centred chips when a side-aligned text node is also present;
-        # otherwise a wide, genuinely ambiguous message remains available as "unknown".
+        # QQ can put a centred timestamp and the following bubble in the *same*
+        # row.  A timestamp-only image/sticker row must disappear even when it
+        # has a named sender container.
         side_texts = [item for item in texts
                       if not (abs((item[2][0] + item[2][2] / 2)
                                   - (vx + vw / 2)) <= vw * 0.10
                               and item[2][2] <= vw * 0.30)]
-        if side_texts:
-            texts = side_texts
+        if not side_texts:
+            continue
+        texts = side_texts
         texts, quoted_text = _split_quote(row, texts)
+        if not texts:
+            continue
         text_rect = _union([item[2] for item in texts])
         if text_rect is None:
             continue
@@ -452,8 +568,8 @@ def _parse_message_list(message_list, window_rect,
         if (not sender_name and abs(center - list_center) <= vw * 0.10
                 and text_rect[2] <= vw * 0.30):
             continue
-        # The row's named sender is authoritative.  Some QQ builds omit it from
-        # AX; only then fall back to a visible AX avatar or clear bubble alignment.
+        # The row sender's name/position is authoritative when available.  Some
+        # QQ builds omit its geometry; then use a visible avatar or bubble side.
         if side == "unknown":
             side = _bubble_side(text_rect, viewport)
         values = [item[1] for item in texts]
@@ -560,7 +676,7 @@ def read_conversation(max_messages: int | None = None, previous_wid: int | None 
         title = _chat_title(web_area, message_list, window_rect)
         window_info = _window_dict(pid, window, window_rect)
         layout = (window_info["wid"], *window_rect, _ax_rect(message_list))
-        digest = hashlib.sha256(repr((title, [(m.side, m.sender, m.text, m.quoted_text)
+        digest = hashlib.sha256(repr((title, [(m.side, m.sender, m.text, m.quoted_text, m.kind)
                                               for m in messages])).encode()).digest()
         elapsed = (time.perf_counter() - started) * 1000
         unchanged = digest == prev_fingerprint and layout == prev_layout
