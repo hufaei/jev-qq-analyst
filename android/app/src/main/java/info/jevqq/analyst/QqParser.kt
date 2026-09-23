@@ -201,7 +201,8 @@ class QqParser(private val width: Int, private val height: Int) {
     private companion object {
         const val BODY_ID = "com.tencent.mobileqq:id/mjn"
         const val SENDER_ID = "com.tencent.mobileqq:id/mjq"
-        val TITLE_IDS = setOf("com.tencent.mobileqq:id/371", "com.tencent.mobileqq:id/3_z")
+        val TITLE_IDS = setOf("com.tencent.mobileqq:id/371", "com.tencent.mobileqq:id/3_z",
+            "com.tencent.mobileqq:id/3g3")
         const val INPUT_ID = "com.tencent.mobileqq:id/input"
         val QUOTE_MARKERS = setOf("引用消息", "引用的消息", "回复消息", "回复的消息")
     }
