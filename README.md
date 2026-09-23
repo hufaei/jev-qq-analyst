@@ -1,4 +1,6 @@
-# Jev · QQ 可见消息分析
+<p align="center"><img src="docs/images/jev-icon.png" width="112" alt="Jev · QQ 可见消息分析图标"></p>
+
+<h1 align="center">Jev · QQ 可见消息分析</h1>
 
 <p align="center">
   <strong>看懂当前聊天，不替你回复。</strong><br>

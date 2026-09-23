@@ -4,7 +4,9 @@
 
     <application
         android:allowBackup="false"
+        android:icon="@drawable/jev_icon"
         android:label="Jev · QQ"
+        android:roundIcon="@drawable/jev_icon"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:usesCleartextTraffic="true">
         <activity android:name=".MainActivity" android:exported="true">
