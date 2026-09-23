@@ -19,12 +19,12 @@
 
 ## 一眼看懂
 
-| | Android | macOS |
-| --- | --- | --- |
-| 读取方式 | QQ 前台聊天页的无障碍节点 | QQ 前台窗口的辅助功能节点 |
-| 判断服务 | 用户填写的 Jev 兼容 HTTPS URL 与 API Key，或本机 Decision Infra | 本机 Decision Infra，精确路由 `jev-latest` |
-| 展示 | 可拖动、缩放、折叠的半透明悬浮面板 | QQ 旁的悬浮窗 |
-| 安装要求 | Android 8.0+（APK 的最低系统版本） | Apple Silicon、macOS 13+、Python 3.12 |
+| | Android | Windows | macOS |
+| --- | --- | --- | --- |
+| 读取方式 | QQ 前台聊天页的无障碍节点 | QQ 前台窗口的 UI Automation 节点 | QQ 前台窗口的辅助功能节点 |
+| 判断服务 | 用户填写的 Jev 兼容 HTTPS URL 与 API Key，或本机 Decision Infra | 同 Android：官方 Jev 或本机 Decision Infra | 本机 Decision Infra，精确路由 `jev-latest` |
+| 展示 | 可拖动、缩放、折叠的半透明悬浮面板 | QQ 旁的置顶悬浮面板 | QQ 旁的悬浮窗 |
+| 安装要求 | Android 8.0+（APK 的最低系统版本） | Windows 10/11 与 Electron 内核 NTQQ；打包 exe 免装 Python | Apple Silicon、macOS 13+、Python 3.12 |
 
 对方的文字各有一张分析卡，显示**意图、情绪、回复风险、是否值得回复、意图候选和下一步策略**。自己的消息只作上下文；可识别的图片、表情和文件只显示类型占位。分析只针对当前已加载、屏幕上可见的内容。
 
@@ -49,7 +49,26 @@
 v0.6.2 根据 iQOO V2520A 上 QQ 9.3.65 的节点报告补充了会话标题识别；该组合还需真机复测。
 
 > [!IMPORTANT]
-> 应用不截图、不 OCR、不读取 QQ 数据库、不注入、不 hook，也不生成、复制、填入或发送回复。Android 直连 Jev 时，API Key 由 Android Keystore 在手机本地加密保存；macOS 端只连接 Decision Infra。完整数据流向见 [隐私说明](PRIVACY.md)。
+> 应用不截图、不 OCR、不读取 QQ 数据库、不注入、不 hook，也不生成、复制、填入或发送回复。Android 直连 Jev 时，API Key 由 Android Keystore 在手机本地加密保存；Windows 同样直连，API Key 由 DPAPI 按用户加密保存；macOS 端只连接 Decision Infra。完整数据流向见 [隐私说明](PRIVACY.md)。
+
+## Windows 快速开始
+
+要求：Windows 10/11、Electron 内核的 Windows 版 QQ（NTQQ）并已登录。UIA 读取无需辅助功能授权；以管理员身份运行的 QQ 需要本程序同样提权才能读取。
+
+1. 双击仓库根目录的 `start.bat`（首次自动安装 `uiautomation`、`psutil` 依赖），或按 [Windows 构建说明](packaging/windows-build.md) 打包免安装的单文件 exe。
+2. 首次启动会打开设置页：选择连接模式——**官方 Jev**（默认 `https://api.typesafe.ai/v1/systemone`，需 API Key）或 **Infra 网关**（默认 `http://127.0.0.1:8080/v1/systemone`，本机 Decision Infra，免 Key），填模型路由后点“测试连接”、“保存设置”。
+3. 保持 QQ 主窗口在前台并打开一个聊天。面板只在 QQ 前台时出现，停靠在 QQ 旁，可拖动、收起、暂停与重新分析（右键菜单）。
+
+只检查 QQ 读取链路，不启动模型：
+
+```bash
+py -3.13 src/qq_ax_win.py
+```
+
+与 macOS 端一致，该命令只输出窗口尺寸、消息数量、收发方向和耗时，不打印聊天标题、昵称或正文。设置与日志存放在 `%APPDATA%\jev-qq-analyst\`。
+
+> [!NOTE]
+> Windows 端已在 Windows 11 · NTQQ 上实测可见消息与贴纸/图片占位的读取；群聊昵称标签、引用消息等结构与其他 QQ 版本的兼容性以实机表现为准，欢迎反馈。
 
 ## macOS 快速开始
 

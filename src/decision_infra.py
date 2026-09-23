@@ -13,12 +13,16 @@ import io
 import json
 from pathlib import Path
 import urllib.error
+import sys
 import urllib.parse
 
 import userconfig
 
 
-_SPEC = json.loads((Path(__file__).resolve().parents[1] / "shared" /
+# PyInstaller onefile unpacks bundled data under sys._MEIPASS; the repo layout
+# applies everywhere else (dev runs and macOS).
+_SPEC_ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[1]))
+_SPEC = json.loads((_SPEC_ROOT / "shared" /
                     "decision_questions.json").read_text(encoding="utf-8"))
 QUESTIONS = _SPEC["questions"]
 CHAT_INTENTS = QUESTIONS["intent"]["criteria"]
@@ -65,15 +69,18 @@ def _connection(url: str, timeout: float):
     return conn, path
 
 
-def _json_request(method: str, url: str, body: dict | None, timeout: float) -> dict:
+def _json_request(method: str, url: str, body: dict | None, timeout: float,
+                  headers: dict | None = None) -> dict:
     """Make exactly one request; Decision Infra explicitly forbids silent retries."""
     conn, path = _connection(url, timeout)
     raw = None if body is None else json.dumps(body, ensure_ascii=False).encode("utf-8")
-    headers = {"accept": "application/json"}
+    request_headers = {"accept": "application/json"}
     if raw is not None:
-        headers["content-type"] = "application/json"
+        request_headers["content-type"] = "application/json"
+    if headers:
+        request_headers.update(headers)
     try:
-        conn.request(method, path, body=raw, headers=headers)
+        conn.request(method, path, body=raw, headers=request_headers)
         response = conn.getresponse()
         payload = response.read()
         if response.status >= 300:
