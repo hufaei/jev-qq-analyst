@@ -17,11 +17,13 @@ a CLI tool at once:
 One format (`env`), one file to remember. Deliberately not two: a second accepted file with
 the same setting names is how you end up carefully editing the one nothing reads.
 
-The names are the conventional ones you likely already export for other tools:
+The active judgment client uses only the Decision Infra gateway:
 
-    TYPESAFE_API_KEY     TypeSafe Jev — the "mouthless" model that judges intent + risk
-    TYPESAFE_BASE_URL    default https://api.typesafe.ai   (gateways: see README)
-    TYPESAFE_MODEL       default jev-latest
+    DECISION_INFRA_BASE_URL  default http://127.0.0.1:8080
+    DECISION_INFRA_MODEL     default jev-latest (exact route, no fallback)
+
+Provider credentials such as TYPESAFE_API_KEY belong to the decision-infra process and
+are intentionally not read by this desktop app.
 
     OPENAI_API_KEY       reply-candidate generation, any OpenAI-compatible endpoint
     OPENAI_BASE_URL      e.g. https://api.deepseek.com, http://localhost:11434/v1

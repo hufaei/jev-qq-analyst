@@ -482,11 +482,12 @@ class FallbackJudge:
 
 
 def make_judge():
-    """Jev when a key is configured, otherwise the local decider-2b."""
-    try:
-        import judge_jev
-        if judge_jev.jev_configured():
-            return FallbackJudge()
-    except Exception:
-        pass
-    return Judge()
+    """Use the Decision Infra gateway exclusively.
+
+    Provider credentials, model lifecycle and exact routing belong to decision-infra.
+    The desktop app neither holds a TypeSafe key nor silently falls back to another
+    provider when the requested route is unavailable.
+    """
+    from decision_infra import DecisionInfraJudge
+
+    return DecisionInfraJudge()

@@ -12,11 +12,13 @@ import urllib.error
 import urllib.parse
 
 import userconfig
+import decision_infra
 from generate import _endpoint, base_is_verbatim_action, http_post_json, jev_request_url, Generator, ThinkingOnlyError
 
-PREFIXES = ("TYPESAFE", "OPENAI", "ANTHROPIC")
+PREFIXES = ("DECISION_INFRA", "TYPESAFE", "OPENAI", "ANTHROPIC")
 FIELDS = ("API_KEY", "BASE_URL", "MODEL")
 DEFAULTS = {
+    "DECISION_INFRA": (decision_infra.DEFAULT_BASE_URL, decision_infra.DEFAULT_MODEL),
     "TYPESAFE": ("https://api.typesafe.ai", "jev-latest"),
     "OPENAI": ("https://api.openai.com/v1", ""),
     "ANTHROPIC": ("https://api.anthropic.com", ""),
@@ -131,6 +133,11 @@ def list_models(prefix: str, base: str, key: str) -> list[str]:
 def test_connection(prefix: str, base: str, key: str, model: str, extra: dict | None = None) -> None:
     """Use exactly the unsaved form values; never fall back to built-in credentials."""
     base = validate_endpoint(base)
+    if prefix == "DECISION_INFRA":
+        actual = decision_infra.test_decision(base, model or decision_infra.DEFAULT_MODEL)
+        if actual != (model or decision_infra.DEFAULT_MODEL):
+            raise ValueError(f"网关实际路由为 {actual}，与所选模型不一致。")
+        return
     if not key or not model.strip():
         raise ValueError("请填写密钥和模型后再测试。")
     if prefix == "TYPESAFE":
@@ -166,7 +173,11 @@ def test_connection(prefix: str, base: str, key: str, model: str, extra: dict | 
 def error_message(error: Exception) -> str:
     """Never display raw remote bodies, URLs or exception strings containing credentials."""
     if isinstance(error, urllib.error.HTTPError):
-        return f"HTTP {error.code}：请检查地址、密钥及模型权限。"
+        if error.code == 404:
+            return "HTTP 404：Decision Infra 没有注册这个精确模型路由。"
+        if error.code == 503:
+            return "HTTP 503：Decision Infra 已收到请求，但模型 Provider 不可用。"
+        return f"HTTP {error.code}：Decision Infra 拒绝了本次判断请求。"
     if isinstance(error, ThinkingOnlyError):
         return "模型只返回了思考内容，没有正文；请关闭思考模式或更换模型。"
     if isinstance(error, (TimeoutError, OSError, http.client.HTTPException)):

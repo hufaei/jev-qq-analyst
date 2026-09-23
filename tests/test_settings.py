@@ -154,6 +154,23 @@ class SettingsNetwork(unittest.TestCase):
         config.test_connection('TYPESAFE', self.base, 'key', 'model')
         self.assertEqual(Server.requests[-1][0], '/v1/systemone')
 
+    def test_decision_infra_connection_uses_exact_route_without_app_key(self):
+        Server.response = {
+            'model': 'jev-latest',
+            'answers': {
+                'intent': {'type': 'choice', 'choice': '闲聊',
+                           'probabilities': {'闲聊': 1.0}, 'confidence': 1.0},
+                'risk': {'type': 'score', 'score': 1.0,
+                         'probabilities': {'1': 1.0}, 'confidence': 1.0,
+                         'legend': {'1': '基本没风险'}},
+            },
+        }
+        config.test_connection('DECISION_INFRA', self.base, '', 'jev-latest')
+        path, headers, body = Server.requests[-1]
+        self.assertEqual(path, '/v1/systemone')
+        self.assertNotIn('authorization', {k.lower(): v for k, v in headers.items()})
+        self.assertEqual(body['model'], 'jev-latest')
+
     def test_empty_and_thinking_are_not_success(self):
         for response in ({}, {'choices': [{'message': {'content': '', 'reasoning_content': 'thinking'}}]}):
             Server.response = response

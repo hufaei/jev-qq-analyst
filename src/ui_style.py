@@ -14,31 +14,43 @@ def rgb(hex_code: int, alpha: float = 1.0) -> A.NSColor:
     )
 
 
-# Native light vibrancy with cool ink, quiet metadata and semantic accents.
+# Neutral surfaces; restrained colour distinguishes probabilities and decisions.
 PALETTE = {
-    "bg": rgb(0xF5F9F8, 0.74),
-    "text": rgb(0x102142),
-    "muted": rgb(0x6F7D94),
-    "accent": rgb(0x0B8A4A),
-    "green": rgb(0x00B95F),
-    "amber": rgb(0xF0A000),
-    "red": rgb(0xF05252),
-    "surface": rgb(0xFFFFFF, 0.36),
-    "row": rgb(0xFFFFFF, 0.24),
-    "field": rgb(0xFFFFFF, 0.42),
-    "edge": rgb(0xFFFFFF, 0.72),
-    "track": rgb(0xB8C1C6, 0.42),
+    "bg": rgb(0xF4F5F5),
+    "text": rgb(0x23272B),
+    "muted": rgb(0x72797E),
+    "accent": rgb(0x23272B),
+    "green": rgb(0x398269),
+    "amber": rgb(0x9B6F2D),
+    "red": rgb(0xB24952),
+    "surface": rgb(0xFFFFFF),
+    "row": rgb(0xF0F1F2),
+    "own_row": rgb(0xE8EEF1),
+    "own_edge": rgb(0xD4E0E5),
+    "own_text": rgb(0x40545F),
+    "prob_high_bg": rgb(0xE2EDF2),
+    "prob_high_text": rgb(0x315B70),
+    "prob_mid_bg": rgb(0xEAF0F3),
+    "prob_mid_text": rgb(0x526D7B),
+    "prob_low_bg": rgb(0xF1F3F4),
+    "prob_low_text": rgb(0x72797E),
+    "reply_yes_bg": rgb(0xE3F0E9),
+    "reply_wait_bg": rgb(0xF5EBDC),
+    "action_row": rgb(0xF5F6F7),
+    "field": rgb(0xFFFFFF),
+    "edge": rgb(0xDCE0E2),
+    "track": rgb(0xC8CDCF),
 }
 
 # Opaque layers need their own contrast; white-on-white vibrancy colors disappear
 # when macOS substitutes a solid backdrop for Reduce Transparency.
 SOLID_PALETTE = {
-    "bg": rgb(0xE7EEEB),
+    "bg": rgb(0xF4F5F5),
     "surface": rgb(0xFFFFFF),
-    "row": rgb(0xF5F8F6),
-    "field": rgb(0xEAF1ED),
-    "edge": rgb(0xC5D2CB),
-    "track": rgb(0xD3DED8),
+    "row": rgb(0xF0F1F2),
+    "field": rgb(0xFFFFFF),
+    "edge": rgb(0xDCE0E2),
+    "track": rgb(0xC8CDCF),
 }
 
 RADIUS_FIELD = 8
@@ -81,8 +93,8 @@ def style_button(button: A.NSButton, *, font_size: float = 11,
                     if primary else A.NSFont.systemFontOfSize_(font_size))
     button.setContentTintColor_(A.NSColor.whiteColor() if primary else PALETTE["text"])
     button.setWantsLayer_(True)
-    button.layer().setBackgroundColor_((PALETTE["green"] if primary else PALETTE["row"]).CGColor())
-    button.layer().setBorderColor_((PALETTE["green"] if primary else PALETTE["edge"]).CGColor())
+    button.layer().setBackgroundColor_((PALETTE["text"] if primary else PALETTE["row"]).CGColor())
+    button.layer().setBorderColor_((PALETTE["text"] if primary else PALETTE["edge"]).CGColor())
     button.layer().setBorderWidth_(0.75)
     button.layer().setCornerRadius_(radius)
     return button

@@ -15,6 +15,7 @@ from unittest.mock import Mock, patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 from perception import TextBlock, extract_messages, find_wechat_window
+from conversation_memory import ConversationMemory
 
 
 def hud_harness():
@@ -51,6 +52,7 @@ def block(text, x, y, w, h=.035):
 class OutgoingTests(unittest.TestCase):
     def setUp(self):
         self.h = h = Harness()
+        h.memory = ConversationMemory()
         HUD['read_conversation'].reset_mock()
         HUD['read_conversation'].side_effect = None
         HUD['frontmost_app_is_wechat'].reset_mock()
@@ -151,13 +153,21 @@ class OutgoingTests(unittest.TestCase):
                                      block('自己发出的消息', .51, .66, .34)])
         self.assertEqual([m.side for m in messages], ['them', 'me'])
 
-    def test_real_incoming_still_triggers_both_jobs_and_keeps_own_context(self):
+    def test_own_reply_at_tail_keeps_last_incoming_as_target(self):
         self.read([block('下午开会', .40, .70, .15), block('我会带材料', .78, .50, .10)])
         self.assertEqual(self.h._prejudge_req[0], '下午开会')
-        self.assertEqual(self.h._pregen_req[0], '下午开会')
-        self.assertIn('我: 我会带材料', self.h._prejudge_req[1])
+        self.assertIsNone(self.h._pregen_req)
+        self.assertFalse(self.h._pregen_event.is_set())
+        self.h.generator.generate.assert_not_called()
         self.flush()
         self.h.applyIncoming_.assert_called_once()
+
+    def test_new_incoming_after_own_reply_uses_own_context(self):
+        self.read([block('下午开会', .40, .70, .15), block('我会带材料', .78, .50, .10)])
+        self.read([block('下午开会', .40, .70, .15), block('我会带材料', .78, .50, .10),
+                   block('那你早点到', .40, .30, .15)])
+        self.assertEqual(self.h._prejudge_req[0], '那你早点到')
+        self.assertIn('我: 我会带材料', self.h._prejudge_req[1])
 
     def test_incoming_wrapped_message_and_sender_preserved(self):
         messages = extract_messages([block('小王', .40, .80, .05, .020),
@@ -236,18 +246,12 @@ class OutgoingTests(unittest.TestCase):
             self.h._prejudge_loop()
         self.assertIsNone(self.h._prejudge_result)
 
-    def test_pregen_completion_cannot_repopulate_cleared_state(self):
+    def test_pregen_worker_is_disabled_in_jev_only_mode(self):
         self.incoming()
-        class Finished(BaseException):
-            pass
         self.h._pregen_event = Mock()
-        self.h._pregen_event.wait.side_effect = [None, Finished()]
-        def generate_then_clear(*args, **kwargs):
-            self.read([])
-            return {'groups': []}
-        self.h.generator.generate.side_effect = generate_then_clear
-        with self.assertRaises(Finished):
-            self.h._pregen_loop()
+        self.assertIsNone(self.h._pregen_loop())
+        self.h._pregen_event.wait.assert_not_called()
+        self.h.generator.generate.assert_not_called()
         self.assertIsNone(self.h._pregen_result)
 
     def test_background_app_hides_without_reading_and_invalidates_reply(self):

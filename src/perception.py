@@ -63,6 +63,7 @@ class Message:
     conf: float
     h: float = 0.0
     sender: str | None = None
+    quoted_text: str = ""  # quoted/replied-to content, context only when AX identifies it
     lines: list[str] = field(default_factory=list)
     # normalized bounding box, kept spanning every folded line — the YOLO overlay draws
     # one box per message, so a 3-line message must cover all 3 lines, not its first

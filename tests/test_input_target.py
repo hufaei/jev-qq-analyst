@@ -20,7 +20,7 @@ class InputTargetTests(unittest.TestCase):
     def test_changed_target_never_writes(self):
         old = {'window': {}, 'box': 'old', 'rect': (0, 400, 600, 100)}
         new = dict(old, box='new')
-        with patch.object(fill, 'has_accessibility', return_value=True), patch.object(fill, '_wechat_app', return_value=Mock()), patch.object(fill, 'locate_input', return_value=new), patch.object(fill, '_ax_set_value') as write:
+        with patch.object(fill, 'has_accessibility', return_value=True), patch.object(fill, '_qq_app', return_value=Mock()), patch.object(fill, 'locate_input', return_value=new), patch.object(fill, '_ax_set_value') as write:
             ok, reason = fill.fill_text('test', target=old)
             self.assertFalse(ok)
             self.assertIn('目标已变化', reason)
@@ -28,6 +28,6 @@ class InputTargetTests(unittest.TestCase):
 
     def test_same_target_appends_and_verifies(self):
         target = {'window': {}, 'box': 'box', 'rect': (0, 400, 600, 100)}
-        with patch.object(fill, 'has_accessibility', return_value=True), patch.object(fill, '_wechat_app', return_value=Mock()), patch.object(fill, 'locate_input', return_value=target), patch.object(fill, '_ax_value', side_effect=['draft', 'drafttest']), patch.object(fill, '_ax_set_value', return_value=True) as write, patch.object(fill, '_LAST_FILL', None):
+        with patch.object(fill, 'has_accessibility', return_value=True), patch.object(fill, '_qq_app', return_value=Mock()), patch.object(fill, 'locate_input', return_value=target), patch.object(fill, '_ax_value', side_effect=['draft', 'drafttest']), patch.object(fill, '_ax_set_value', return_value=True) as write, patch.object(fill, '_LAST_FILL', None):
             self.assertEqual(fill.fill_text('test', target=target), (True, '已填入'))
             write.assert_called_once_with('box', 'drafttest')
