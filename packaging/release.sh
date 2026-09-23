@@ -122,8 +122,8 @@ if [ "$PUBLISH" = 1 ]; then
         echo
         echo "**第一次打开**：右键（或按住 Control 点）→ 打开 → 再点「打开」。未做 Apple 公证，双击会被 Gatekeeper 拦，只需这一次。"
         echo "若弹「**已损坏，无法打开**」（浏览器下载常见，右键无效）：终端执行 \`sudo xattr -r -d com.apple.quarantine /Applications/jev-jarvis.app\` 后再打开。"
-        echo "**第一次启动**：联网装依赖（uv 缓存命中就很快）；只需给 \`jev-jarvis\` 授予「屏幕录制」权限，然后退出重开，无需单独授权 \`python3.12\`。"
-        echo "**判断层默认跑本地模型，首次要下载约 7GB**（之后离线可用）。不想下这么大：在 \`~/.config/jev-jarvis/env\` 里给判断层配一个 key 走云端，见 README「配置」。"
+        echo "**第一次启动**：联网安装依赖（uv 缓存命中就很快）；给 \`jev-qq-analyst\` 授予「辅助功能」权限，并打开 QQ 当前聊天。"
+        echo "**判断服务**：先启动 Decision Infra 网关并在网关配置 \`TYPESAFE_API_KEY\`；QQ 应用只连接本机网关，不保存 Provider Key。详见 README。"
         echo
         echo "### 本次包含"
         PREV="$(git -C "$ROOT" describe --tags --abbrev=0 2>/dev/null || true)"
@@ -133,7 +133,7 @@ if [ "$PUBLISH" = 1 ]; then
             git -C "$ROOT" log --pretty='- %s' | head -20
         fi
     } > "$NOTES"
-    RELEASE_ARGS=("$TAG" "$ZIP" "$STABLE" "$OUT/SHA256SUMS" --title "jev-jarvis $TAG" --notes-file "$NOTES" --latest)
+    RELEASE_ARGS=("$TAG" "$ZIP" "$STABLE" "$OUT/SHA256SUMS" --title "jev-qq-analyst $TAG" --notes-file "$NOTES" --latest)
     # pin the tag: without --target gh tags the default branch tip, which may have moved
     # since the zip was built
     [ -n "$TARGET" ] && RELEASE_ARGS+=(--target "$TARGET")
@@ -164,6 +164,6 @@ if [ "$PUBLISH" = 1 ]; then
 else
     echo
     echo "    下一步（发 GitHub Release）："
-    echo "      gh release create v$VERSION \"$ZIP\" \"$STABLE\" \"$OUT/SHA256SUMS\" --title \"jev-jarvis v$VERSION\" --generate-notes --latest"
+    echo "      gh release create v$VERSION \"$ZIP\" \"$STABLE\" \"$OUT/SHA256SUMS\" --title \"jev-qq-analyst v$VERSION\" --generate-notes --latest"
     echo "    或直接重跑：./packaging/release.sh --publish"
 fi

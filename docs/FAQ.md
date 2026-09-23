@@ -1,52 +1,31 @@
-# 常见问题解答（FAQ）
+# 常见问题
 
-路径与常见报错的速查。完整配置说明见 README[「配置」](../README.md#配置)，磁盘清理见[「磁盘占用与清理」](../README.md#磁盘占用与清理)。
+当前版本分析 macOS QQ 窗口中可见的对方消息。完整启动步骤见 [README](../README.md#快速开始)，数据流向见 [隐私说明](../PRIVACY.md)。
 
-## 配置文件在哪？
+## 配置文件和日志在哪里？
 
-`~/.config/jev-jarvis/env`（env 格式，本项目只有这一种配置格式，没有 config.json）
+用户配置仍位于 `~/.config/jev-jarvis/env`，日志仍位于 `~/Library/Logs/jev-jarvis.log`。这两个旧路径会继续被当前启动器使用；仓库更名不会自动迁移它们。开发时还可使用项目根目录的 `.env`，格式见 [示例](../.env.example)。配置保存后重启应用。
 
-```bash
-cat ~/.config/jev-jarvis/env
-```
+正常诊断日志不主动记录聊天标题、昵称或消息正文。反馈问题前仍应检查错误信息，避免附带个人信息；不要公开自己的配置文件。
 
-⚠️ **这个文件里有你的 API key，把内容贴到 issue 或群里之前，先把 key 打码。**
+## 网关在线，但没有分析结果？
 
-## 日志在哪？
+先确认 QQ 位于前台、当前聊天有可见的对方文字消息，并已给终端或 `jev-jarvis.app` 授予 macOS“辅助功能”权限。`uv run python src/qq_ax.py` 可只检查读取链路；它不调用模型，也不打印消息正文。
 
-`~/Library/Logs/jev-jarvis.log`
+再检查 Decision Infra 的 `GET /healthz`。健康检查只证明网关在线，不证明 `jev-latest` 已注册或 Provider 可用。QQ 应用默认请求 `http://127.0.0.1:8080/v1/systemone`，显式指定 `jev-latest`；网关未注册该模型时会返回 404，Provider 不可用时可返回 503。`TYPESAFE_API_KEY` 应配置在 infra 进程，而不是 QQ 应用。具体路由契约见 [Decision Infra API 文档](https://github.com/hufaei/decision-infra/blob/main/docs/api.md)。
 
-```bash
-tail -f ~/Library/Logs/jev-jarvis.log    # 实时滚动
-tail -40 ~/Library/Logs/jev-jarvis.log   # 最近 40 行，贴 issue 用这个
-```
+## 为什么某条消息没有分析？
 
-日志刻意**不含消息正文与候选回复文字**，可以放心整段贴进 issue；反馈时说明当时在做什么（启动 / 首条消息 / 填入…）更好定位。
+只有当前窗口已加载、可见、能识别为对方发送的文字才是分析目标。自己的消息只作上下文；没有可读正文的图片、语音，以及方向不明确的消息不会分析。QQ 改版也可能改变 AX 层级。先用上述诊断命令检查数量和收发方向，再记录 QQ 版本与复现步骤。
 
-## 本地判断模型在哪？
+## 为什么引用内容没有单独显示？
 
-`~/.cache/huggingface/hub/models--Mapika--decider-2b`
+只有 QQ 的 AX 树明确标注引用容器时，应用才能将引用与新写正文分开。若没有标注，引用可能混入正文，此时不应把结果当作正确识别了引用。详见 [已知限制](../README.md#已知限制)。
 
-- 落盘实际占用 **约 3.8 GB**（实测）；查看占用、删除模型都在应用内：**模型设置 →「判断 · Jev」页**
-- 删除后走本地判断会重新下载；不想下载可配置 `TYPESAFE_API_KEY` 走云端判断
-- 若设置过 `HF_HUB_CACHE` 或 `HF_HOME` 环境变量，模型位置以环境变量为准
+## 应用会下载本地模型或生成回复吗？
 
-命令行提醒：`du -sh` 这个模型子目录会读出**偏小甚至接近 0** 的数字（HuggingFace Xet 缓存布局，实体 blob 存在模型目录之外），别用它判断「模型没下完」；以设置页显示的占用为准。
-
-## 安装时提示「已损坏，无法打开，你应该将它移到废纸篓」？
-
-浏览器下载的 zip 常见（Gatekeeper 隔离属性），右键打开也绕不过，**别删**——终端清掉隔离属性即可：
-
-```bash
-sudo xattr -r -d com.apple.quarantine /Applications/jev-jarvis.app
-```
-
-`.app` 改过名（如「jev-jarvis 2.app」）就把命令里的路径换成实际名字。装好后首次启动还需授予「屏幕录制」与「辅助功能」权限，详见 README[「只想用」](../README.md#只想用)一节。
-
-## 启动后悬浮窗一片空白、没有任何提示？
-
-这是**旧版本**的现象：新版本首次启动会弹出判断方式引导，模型下载/加载期间面板状态行有实时进度（如「下载判断模型 34% · 1.2/3.8 GB」），失败也有红字说明。遇到一片白先确认版本，**推荐更新到[最新版](https://github.com/jev-chat/jev-chat-jarvis-mac/releases/latest)**。新版本发布会在微信群与公众号通知，入口见 README 文末[「交流反馈」](../README.md#交流反馈)，建议关注以便第一时间收到更新。
+当前 HUD 只通过 Decision Infra 做结构化判断，不下载本地判断模型，不运行候选回复生成器，也没有复制、填入或发送按钮。仓库中仍有旧实现文件，不代表当前界面会调用它们。
 
 ## 还有问题？
 
-先看 README[「已知限制」](../README.md#已知限制)与[置顶 issue](../../issues)；带上下文日志（打码后）开新 issue。数据收集与隐私说明：[PRIVACY.md](../PRIVACY.md)。
+可在 [仓库 Issues](https://github.com/hufaei/jev-qq-analyst/issues) 中附上 QQ 版本、复现步骤、去掉个人信息的诊断和日志摘要。

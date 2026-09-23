@@ -52,7 +52,7 @@ static char *bootstrap_path(void) {
 int main(void) {
     char *script = bootstrap_path();
     if (script == NULL) {
-        fputs("jev-chat-jarvis: cannot locate launcher.zsh\n", stderr);
+        fputs("jev-qq-analyst: cannot locate launcher.zsh\n", stderr);
         return 1;
     }
 
@@ -61,7 +61,7 @@ int main(void) {
     int spawn_error = posix_spawn(&pid, "/bin/zsh", NULL, NULL, argv, environ);
     free(script);
     if (spawn_error != 0) {
-        fprintf(stderr, "jev-chat-jarvis: cannot start bootstrap: %s\n",
+        fprintf(stderr, "jev-qq-analyst: cannot start bootstrap: %s\n",
                 strerror(spawn_error));
         return 1;
     }
@@ -74,7 +74,7 @@ int main(void) {
     int status = 0;
     while (waitpid(pid, &status, 0) == -1) {
         if (errno != EINTR) {
-            perror("jev-chat-jarvis: waitpid");
+            perror("jev-qq-analyst: waitpid");
             return 1;
         }
     }

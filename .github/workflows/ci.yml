@@ -1,12 +1,12 @@
-# CI：PR 与 master push 自动跑离线回归（合成 OCR，不读屏、不调 API、不读凭据）。
+# CI：PR 与 main push 自动跑离线回归（合成 QQ 辅助功能树，不读屏、不调 API、不读凭据）。
 # 测试导入 Quartz（pyobjc），必须 macOS runner；本仓库公开，macOS runner 免费不计费。
 name: CI
 
 on:
   pull_request:
-    branches: [master]
+    branches: [main]
   push:
-    branches: [master]
+    branches: [main]
 
 # 同一分支的新 run 取消同 ref 的旧 run，省排队时间
 concurrency:

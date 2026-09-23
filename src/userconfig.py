@@ -1,39 +1,14 @@
-"""Configuration — one set of names, one format, three places to look.
+"""Load the QQ analyst's environment settings.
 
-All personal settings live OUTSIDE the repository (so `git add -A` can never leak a key).
-The format is always shell-style `KEY=value`; only the search order varies, because this app
-is both a .app and a terminal tool:
+The active HUD uses DECISION_INFRA_BASE_URL (default http://127.0.0.1:8080)
+and DECISION_INFRA_MODEL (default jev-latest). Provider credentials belong to
+the Decision Infra process, not this application.
 
-    1. real environment      wins over everything (good for a one-off override)
-    2. ~/.config/jev-jarvis/env            <- where the README tells you to put your keys
-    3. <project>/.env                      <- for working on the repo itself
-
-Both system conventions are searched for that `env` file, since the app is a GUI bundle and
-a CLI tool at once:
-
-    macOS native (GUI apps)   ~/Library/Application Support/jev-jarvis/   <- also holds the venv
-    dev-tool convention       ~/.config/jev-jarvis/   (or $XDG_CONFIG_HOME/jev-jarvis/)
-
-One format (`env`), one file to remember. Deliberately not two: a second accepted file with
-the same setting names is how you end up carefully editing the one nothing reads.
-
-The active judgment client uses only the Decision Infra gateway:
-
-    DECISION_INFRA_BASE_URL  default http://127.0.0.1:8080
-    DECISION_INFRA_MODEL     default jev-latest (exact route, no fallback)
-
-Provider credentials such as TYPESAFE_API_KEY belong to the decision-infra process and
-are intentionally not read by this desktop app.
-
-    OPENAI_API_KEY       reply-candidate generation, any OpenAI-compatible endpoint
-    OPENAI_BASE_URL      e.g. https://api.deepseek.com, http://localhost:11434/v1
-    OPENAI_MODEL         e.g. deepseek-chat, glm-4-flash, qwen2.5:7b
-
-    ANTHROPIC_API_KEY    same job, for Anthropic-compatible endpoints instead
-    ANTHROPIC_BASE_URL
-    ANTHROPIC_MODEL
-
-    LLM_MODEL            shared model name, used when the per-provider one is absent
+Settings are shell-style KEY=value. The real environment wins, followed by
+legacy user configuration directories and the project .env. The old
+jev-jarvis directory name is retained so existing installations keep working.
+Legacy generation settings may still be parsed for old modules but are not
+used by the current HUD.
 """
 
 from __future__ import annotations

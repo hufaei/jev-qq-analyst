@@ -198,11 +198,14 @@ def _row_container(message_list):
             continue
         children = list(_ax_attr(element, AX.kAXChildrenAttribute) or [])
         rect = _ax_rect(element)
-        if not children or not _intersects(rect, viewport):
+        if (not children or not _intersects(rect, viewport)
+                or rect[2] < viewport[2] * .8 or rect[3] < viewport[3] * .8
+                or any(_ax_attr(child, AX.kAXRoleAttribute) != "AXGroup"
+                       for child in children)):
             continue
         # QQ's list content group owns every virtualised row directly.  Child count is
         # more stable across versions than its anonymous AXGroup depth.
-        score = len(children) * 100 - depth
+        score = len(children) * 100 + depth
         if score > best_score:
             best, best_score = element, score
     return best

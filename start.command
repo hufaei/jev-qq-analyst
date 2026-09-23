@@ -1,5 +1,5 @@
 #!/bin/zsh
-# 启动 jev-jarvis 悬浮窗（不装 LaunchAgent，按需手动启动）
+# 启动 jev-qq-analyst 悬浮窗（保留旧配置与日志路径）
 cd "$(dirname "$0")" || exit 1
 export USE_TF=0
 # uv installs to ~/.local/bin; a Finder-launched .command does not inherit a login shell

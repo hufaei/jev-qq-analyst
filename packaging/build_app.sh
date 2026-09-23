@@ -7,7 +7,7 @@
 #
 # What the bundle buys you (the reason to do this at all):
 #   * double-click launch, no terminal
-#   * its own TCC identity — Screen Recording / Accessibility are granted to
+#   * its own TCC identity — Accessibility is granted to
 #     "jev-jarvis", not to whatever terminal happened to start it
 #   * LSUIElement: a floating helper, no Dock icon, never steals focus
 #
@@ -55,8 +55,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleName</key>              <string>jev-chat-jarvis</string>
-    <key>CFBundleDisplayName</key>       <string>jev-chat-jarvis</string>
+    <key>CFBundleName</key>              <string>jev-qq-analyst</string>
+    <key>CFBundleDisplayName</key>       <string>jev-qq-analyst</string>
     <key>CFBundleIdentifier</key>        <string>${BUNDLE_ID}</string>
     <key>CFBundleVersion</key>           <string>${VERSION}</string>
     <key>CFBundleShortVersionString</key><string>${VERSION}</string>
@@ -73,11 +73,6 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <!-- floating helper: no Dock icon, never becomes the active app -->
     <key>LSUIElement</key>               <true/>
     <key>NSHighResolutionCapable</key>   <true/>
-    <!-- permission prompts are shown by the system; these strings explain why -->
-    <key>NSScreenCaptureUsageDescription</key>
-    <string>jev-chat-jarvis 需要读取微信窗口的画面，才能在本地识别消息文字（不上传）。</string>
-    <key>NSAppleEventsUsageDescription</key>
-    <string>jev-chat-jarvis 需要把选中的回复粘贴到微信输入框。</string>
 </dict>
 </plist>
 PLIST
@@ -99,16 +94,15 @@ mkdir -p "$SUPPORT" "$(dirname "$LOG")"
 # Finder launches have a minimal PATH; add the usual install locations for uv
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 
-# user-level env (API keys). Lives OUTSIDE the repo so it can never be committed, in the
-# one location the README documents — a Finder launch inherits no shell environment at all,
-# so sourcing here is the only chance to pick the keys up before Python also reads them.
+# User-level gateway settings live outside the repo. Finder launches do not inherit a
+# shell environment, so the launcher loads the legacy config path before Python starts.
 [ -f "$CONFIG/env" ] && source "$CONFIG/env"
 
 log() { print -r -- "[$(date '+%F %T')] $*" >> "$LOG"; }
 
 die() {  # show a native dialog, then exit
     log "FATAL: $1"
-    osascript -e "display alert \"jev-chat-jarvis 启动失败\" message \"$1\n\n详情: $LOG\" as critical" >/dev/null 2>&1
+    osascript -e "display alert \"jev-qq-analyst 启动失败\" message \"$1\n\n详情: $LOG\" as critical" >/dev/null 2>&1
     exit 1
 }
 
@@ -119,7 +113,7 @@ fi
 if ! command -v uv >/dev/null 2>&1; then
     # non-blocking: a Finder launch has no terminal, and a silent multi-minute wait
     # for uv + deps is indistinguishable from "the app is broken"
-    osascript -e 'display notification "首次启动：正在安装 uv（约 10 MB）" with title "jev-chat-jarvis"' >/dev/null 2>&1
+    osascript -e 'display notification "首次启动：正在安装 uv（约 10 MB）" with title "jev-qq-analyst"' >/dev/null 2>&1
 fi
 if ! jev_ensure_uv "$LOG"; then
     die "$JEV_UV_ERROR。也可手动运行 brew install uv 后重试。"
@@ -145,7 +139,7 @@ fi
 if [ "$ready" = 0 ]; then
     rm -rf "$VENV"
     log "正在创建虚拟环境并安装依赖（需要几分钟，请保持联网）"
-    osascript -e 'display notification "正在准备运行环境（几分钟，需联网）" with title "jev-chat-jarvis"' >/dev/null 2>&1
+    osascript -e 'display notification "正在准备运行环境（几分钟，需联网）" with title "jev-qq-analyst"' >/dev/null 2>&1
     # --frozen: use the shipped uv.lock exactly, never re-resolve at runtime
     if ! uv sync --frozen --python "@PYTHON_PIN@" --project "$RES/app" --quiet >>"$LOG" 2>&1; then
         die "依赖安装失败，请查看日志"
@@ -213,16 +207,13 @@ check "许可证进包（MIT）"           "[ -f '$APP/Contents/Resources/app/LI
 check "依赖版本已冻结到 $PY_PIN"     "grep -q '${PY_PIN}' '$APP/Contents/Resources/launcher.zsh'"
 check "运行时不会改写已签名包"       "grep -q '^export PYTHONDONTWRITEBYTECODE=1' '$APP/Contents/Resources/launcher.zsh'"
 check "没夹带缓存"                  "[ ! -d '$APP/Contents/Resources/app/src/__pycache__' ]"
-# a key that leaked into src/ would ship to whoever gets the bundle. src/builtin.py is the
-# single deliberate exception — it holds the shared default that lets an unconfigured install
-# produce candidates at all, which is why that token must be scope-limited and capped.
-# Every other file still has to be clean, so accidental leaks stay caught.
-if grep -rEl --binary-files=without-match --exclude=builtin.py 'sk-[A-Za-z0-9]{20,}' \
+# A key leaked into src/ would ship to everyone who receives the bundle.
+if grep -rEl --binary-files=without-match 'sk-[A-Za-z0-9]{20,}' \
         "$APP/Contents/Resources/app/src" "$APP/Contents/Resources/app/.env.example" 2>/dev/null | grep -q .; then
     echo "    ✗ 源码里疑似有 API key" >&2
     exit 1
 fi
-echo "    ✓ 没夹带 API key（builtin.py 的内置凭据是刻意保留的）"
+echo "    ✓ 没夹带 API key"
 
 echo "==> 完成"
 du -sh "$APP" | awk '{print "    包体积: " $1}'

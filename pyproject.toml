@@ -1,5 +1,5 @@
 [project]
-name = "jev-jarvis"
+name = "jev-qq-analyst"
 version = "0.4.0"
 description = "macOS QQ 可见消息的 Jev 意图与风险分析悬浮窗"
 readme = "README.md"
