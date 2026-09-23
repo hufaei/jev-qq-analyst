@@ -36,6 +36,18 @@ class QqParserTest {
         assertEquals(listOf(Side.THEM, Side.THEM), snapshot.messages.map { it.side })
     }
 
+    @Test fun qq9365TitleDoesNotConfuseSecondaryHeaderText() {
+        val title = node(id = "com.tencent.mobileqq:id/3g3", text = "小王",
+            bounds = box(103, 134, 238, 196))
+        val secondary = node(id = "com.tencent.mobileqq:id/j64", text = "在线状态",
+            bounds = box(103, 201, 423, 233))
+        val body = node(id = "com.tencent.mobileqq:id/mjn", text = "你好",
+            bounds = box(140, 1573, 651, 1728))
+        val snapshot = QqParser(1080, 2376).parse(chat(title, secondary, body))!!
+        assertEquals("小王", snapshot.title)
+        assertEquals(listOf("你好"), snapshot.messages.map { it.text })
+    }
+
     @Test fun rowSenderEvidenceBeatsWideBubbleAndMisleadingAvatar() {
         val incoming = node(bounds = box(70, 200, 960, 290), children = arrayOf(
             node(id = "com.tencent.mobileqq:id/mjq", text = "小王", bounds = box(120, 205, 180, 225)),

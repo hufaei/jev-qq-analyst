@@ -46,6 +46,8 @@
 
 若另一款手机上的 QQ 提示“会话标题未识别”或没有可见消息，v0.6.1 起可在设置页手动采集并导出[不含聊天文字的节点报告](android/README.md#不连接电脑导出兼容性诊断)，无需连接电脑。
 
+v0.6.2 根据 iQOO V2520A 上 QQ 9.3.65 的节点报告补充了会话标题识别；该组合还需真机复测。
+
 > [!IMPORTANT]
 > 应用不截图、不 OCR、不读取 QQ 数据库、不注入、不 hook，也不生成、复制、填入或发送回复。Android 直连 Jev 时，API Key 由 Android Keystore 在手机本地加密保存；macOS 端只连接 Decision Infra。完整数据流向见 [隐私说明](PRIVACY.md)。
 

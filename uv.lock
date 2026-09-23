@@ -4,7 +4,7 @@ requires-python = ">=3.12"
 
 [[package]]
 name = "jev-qq-analyst"
-version = "0.6.1"
+version = "0.6.2"
 source = { virtual = "." }
 dependencies = [
     { name = "pyobjc-framework-applicationservices" },

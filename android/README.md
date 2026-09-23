@@ -50,6 +50,8 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 当前解析规则参考 [QQAdapter](https://github.com/jev-chat/jev-chat-jarvis/blob/main/app/src/main/java/com/jev/probe/capture/ChatAppAdapter.kt#L170-L231) 的 QQ 资源 ID，并在上述实测组合中支持左侧“资料卡”头像定位长文本的发送者。QQ 版本、设备和消息类型会改变无障碍树；无法确定方向的消息不会被分析。若出现漏读或误判，请记录手机型号、Android 与 QQ 版本，并提供**去掉私人内容**的页面结构或复现说明。
 
+QQ `9.3.65` 在 iQOO `V2520A`、Android 16（API 36）上的脱敏节点报告显示：会话标题 ID 为 `3g3`，文字正文仍为已支持的 `mjn`。v0.6.2 已补充该标题 ID；这是节点级适配，实际分析效果仍需手机复测。
+
 ## 本地测试
 
 ```bash
