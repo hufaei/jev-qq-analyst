@@ -20,7 +20,8 @@ def harness_class():
                   if isinstance(node, ast.ClassDef) and node.name == "HudController")
     methods = [node for node in source.body
                if isinstance(node, ast.FunctionDef)
-               and node.name in {"_visible_update", "_visible_worker_loop"}]
+               and node.name in {"_visible_update", "_visible_worker_loop",
+                                 "_push", "applyEpochUpdate_"}]
     for method in methods:
         method.decorator_list = []
     klass = ast.ClassDef(name="Harness", bases=[], keywords=[], body=methods,
@@ -33,6 +34,22 @@ def harness_class():
 
 
 class VisibleAnalysisTests(unittest.TestCase):
+    def test_queued_ui_update_from_previous_foreground_epoch_is_ignored(self):
+        controller = harness_class()()
+        queued = []
+        controller.performSelectorOnMainThread_withObject_waitUntilDone_ = (
+            lambda selector, payload, wait: queued.append((selector, payload)))
+        controller.applyChat_ = Mock()
+        controller._foreground_epoch = 1
+        controller._push("applyChat:", "old chat")
+        controller._foreground_epoch = 2
+        controller.applyEpochUpdate_(queued.pop()[1])
+        controller.applyChat_.assert_not_called()
+
+        controller._push("applyChat:", "current chat")
+        controller.applyEpochUpdate_(queued.pop()[1])
+        controller.applyChat_.assert_called_once_with("current chat")
+
     def test_all_counterpart_rows_only_and_cached_on_revisit(self):
         controller = harness_class()()
         controller.memory = ConversationMemory()
@@ -44,7 +61,7 @@ class VisibleAnalysisTests(unittest.TestCase):
         controller._visible_event.wait.side_effect = [None, StopIteration()]
         controller._push = Mock()
         controller._paused = False
-        controller._wechat_frontmost = True
+        controller._qq_frontmost = True
         controller._model_lock = threading.Lock()
         controller.judge = Mock()
         controller.judge.judge.return_value = {"intent": "闲聊"}

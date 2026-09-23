@@ -16,12 +16,27 @@ import hashlib
 import re
 import time
 from collections import deque
+from dataclasses import dataclass, field
 
 import AppKit
 import ApplicationServices as AX
 import Quartz
 
-from perception import Message
+
+@dataclass
+class Message:
+    """A text message visible in the current QQ accessibility tree."""
+
+    text: str
+    side: str  # them | me | unknown
+    y: float   # normalized, top origin
+    conf: float
+    h: float = 0.0
+    sender: str | None = None
+    quoted_text: str = ""
+    lines: list[str] = field(default_factory=list)
+    x: float = 0.0
+    w: float = 0.0
 
 
 QQ_BUNDLE_ID = "com.tencent.qq"
@@ -30,7 +45,6 @@ MESSAGE_LIST_DESCRIPTION = "消息列表"
 QQ_MESSAGE_ROUTE = "/main/message"
 MAX_NODES = 50_000
 MAX_DEPTH = 64
-MIN_INPUT_AREA = 5_000.0
 
 
 def has_accessibility() -> bool:
@@ -521,25 +535,6 @@ def _window_dict(pid: int, window, ax_rect):
     return {"wid": 0, "pid": pid, "title": "QQ", "x": x, "y": y, "w": w, "h": h}
 
 
-def find_input_box(pid: int, window_rect=None):
-    """Return QQ's largest AXTextArea inside the current window, or ``None``."""
-    app_element = AX.AXUIElementCreateApplication(pid)
-    best, best_area = None, 0.0
-    for window in _window_roots(app_element):
-        rect = _ax_rect(window)
-        if window_rect is not None and (rect is None or any(
-                abs(left - right) > 3 for left, right in zip(rect, window_rect))):
-            continue
-        for element, _depth in _walk([window]):
-            if _ax_attr(element, AX.kAXRoleAttribute) != "AXTextArea":
-                continue
-            candidate_rect = _ax_rect(element)
-            area = candidate_rect[2] * candidate_rect[3] if candidate_rect else 0.0
-            if area > best_area:
-                best, best_area = element, area
-    return best if best_area >= MIN_INPUT_AREA else None
-
-
 def read_conversation(max_messages: int | None = None, previous_wid: int | None = None,
                       prev_fingerprint: bytes | None = None, prev_layout=None) -> dict:
     """Read the current, visible QQ message rows from its focused AX window."""
@@ -580,17 +575,6 @@ def read_conversation(max_messages: int | None = None, previous_wid: int | None 
                           "capture_path": "accessibility"},
         }
     return {"ok": False, "error": "当前 QQ 窗口里没找到消息列表", "messages": []}
-
-
-# Compatibility names keep the HUD's well-tested lifecycle small while its data source
-# changes from WeChat OCR to QQ AX.  They do not request Screen Recording or run OCR.
-frontmost_app_is_wechat = frontmost_app_is_qq
-screen_capture_ok = has_accessibility
-request_screen_capture = request_accessibility
-
-
-def warm_ocr() -> float:
-    return 0.0
 
 
 if __name__ == "__main__":

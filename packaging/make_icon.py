@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Render the app icon into an .iconset directory (then iconutil turns it into .icns).
 
-Drawn offscreen with AppKit — no Pillow, no ImageMagick. Design: WeChat-green rounded
-square, a white "J" mark, and a small badge dot in the corner.
+Drawn offscreen with AppKit — no Pillow, no ImageMagick. Design: slate-blue rounded
+square and a white "J" mark with a conversation notch.
 
 Usage: python3 packaging/make_icon.py <out.iconset>
 """
@@ -24,7 +24,7 @@ from AppKit import (
 )
 from Foundation import NSMakeRect
 
-GREEN = (0.027, 0.757, 0.376)   # WeChat #07C160
+SLATE_BLUE = (0.19, 0.36, 0.46)
 SIZES = [16, 32, 64, 128, 256, 512, 1024]
 
 
@@ -39,9 +39,9 @@ def render(px: int) -> bytes:
     radius = px * 0.225
     body = NSMakeRect(inset, inset, px - 2 * inset, px - 2 * inset)
 
-    # rounded square, WeChat green
+    # rounded square
     path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(body, radius, radius)
-    NSColor.colorWithCalibratedRed_green_blue_alpha_(*GREEN, 1.0).set()
+    NSColor.colorWithCalibratedRed_green_blue_alpha_(*SLATE_BLUE, 1.0).set()
     path.fill()
 
     # the "J" mark

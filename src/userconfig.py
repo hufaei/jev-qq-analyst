@@ -5,10 +5,8 @@ and DECISION_INFRA_MODEL (default jev-latest). Provider credentials belong to
 the Decision Infra process, not this application.
 
 Settings are shell-style KEY=value. The real environment wins, followed by
-legacy user configuration directories and the project .env. The old
-jev-jarvis directory name is retained so existing installations keep working.
-Legacy generation settings may still be parsed for old modules but are not
-used by the current HUD.
+user configuration directories and the project .env. The old jev-jarvis
+directory name is retained so existing installations keep working.
 """
 
 from __future__ import annotations
@@ -18,6 +16,7 @@ import shlex
 from pathlib import Path
 
 PROJECT_ENV = Path(__file__).resolve().parent.parent / ".env"
+ACTIVE_KEYS = {"DECISION_INFRA_BASE_URL", "DECISION_INFRA_MODEL"}
 
 
 def config_dirs() -> list[Path]:
@@ -121,33 +120,21 @@ def _label() -> str:
 
 _startup_sources: list[tuple[str, dict[str, str]]] | None = None
 
-# Session-scoped overrides: read first by get(), never persisted. Exists because the
-# startup snapshot freezes os.environ at import time, so a plain os.environ write later
-# is invisible to get() — the #38 first-run dialog needs its choice honoured immediately,
-# not after a restart.
-_session_overrides: dict[str, str] = {}
-
-
-def session_override(key: str, value: str) -> None:
-    """Make `key` read as `value` for the rest of this process, ahead of every source."""
-    _session_overrides[key] = value
-
-
 def _sources() -> list[tuple[str, dict[str, str]]]:
     if _startup_sources is not None:
         return _startup_sources
     return [
-        ("环境变量", dict(os.environ)),
-        (_label(), _merged_env_file()),
-        (str(PROJECT_ENV), parse_env_file(PROJECT_ENV)),
+        ("环境变量", {key: value for key, value in os.environ.items()
+                  if key in ACTIVE_KEYS}),
+        (_label(), {key: value for key, value in _merged_env_file().items()
+                    if key in ACTIVE_KEYS}),
+        (str(PROJECT_ENV), {key: value for key, value in parse_env_file(PROJECT_ENV).items()
+                            if key in ACTIVE_KEYS}),
     ]
 
 
 def get(*names: str) -> str:
     """First non-empty value among `names`, searching sources in priority order."""
-    for name in names:
-        if _session_overrides.get(name):
-            return _session_overrides[name]
     for _src, vals in _sources():
         for name in names:
             if vals.get(name):
@@ -163,34 +150,14 @@ def source_of(*names: str) -> str:
     return "none"
 
 
-def provider(prefix: str) -> dict[str, str]:
-    """Resolve one provider's triple, anchored on its key.
-
-    A key and its endpoint must come from the same place — mixing them means calling
-    provider A with provider B's key and getting an unexplained 401. So whichever source
-    supplies the key also supplies base/model; other sources only fill the gaps.
-    """
-    key_name = f"{prefix}_API_KEY"
-    for src, vals in _sources():
-        if vals.get(key_name):
-            return {
-                "key": vals[key_name],
-                "base": vals.get(f"{prefix}_BASE_URL") or get(f"{prefix}_BASE_URL"),
-                "model": (vals.get(f"{prefix}_MODEL") or get(f"{prefix}_MODEL")
-                          or get("LLM_MODEL")),
-                "source": src,
-            }
-    return {"key": "", "base": get(f"{prefix}_BASE_URL"),
-            "model": get(f"{prefix}_MODEL") or get("LLM_MODEL"), "source": "none"}
-
-
 def load() -> dict[str, str]:
-    """Copy the user env files into os.environ (variables already set win)."""
+    """Load only active gateway settings; legacy provider secrets stay on disk."""
     global _startup_sources
     # Keep this process on its startup configuration: settings saves require restart.
     if _startup_sources is None:
         _startup_sources = _sources()
-    loaded = _merged_env_file()
+    loaded = {key: value for key, value in _merged_env_file().items()
+              if key in ACTIVE_KEYS}
     for key, val in loaded.items():
         if val and not os.environ.get(key):
             os.environ[key] = val

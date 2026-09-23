@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tests"))
 
-from test_settings import Server, SettingsNetwork
+from test_settings import Gateway, SettingsNetwork
 import userconfig
 from settings import SettingsController
 
@@ -47,29 +47,16 @@ try:
 
         controller = SettingsController.alloc().init().build()
         controller.show()
-        fields = controller.fields["DECISION_INFRA"]
-        assert not fields["API_KEY"].isEnabled(), "app-side key must stay disabled"
+        fields = controller.fields
+        assert set(fields) == {"BASE_URL", "MODEL"}, "settings must expose only gateway route"
         fields["BASE_URL"].setStringValue_(SettingsNetwork.base)
         fields["MODEL"].setStringValue_("jev-latest")
 
-        Server.response = {
-            "model": "jev-latest",
-            "answers": {
-                "intent": {
-                    "type": "choice", "choice": "闲聊",
-                    "probabilities": {"闲聊": 1.0}, "confidence": 1.0,
-                },
-                "risk": {
-                    "type": "score", "score": 1.0,
-                    "probabilities": {"1": 1.0}, "confidence": 1.0,
-                    "legend": {"1": "基本没风险"},
-                },
-            },
-        }
-        Server.code = 200
+        Gateway.requests = []
         controller.test_button.performClick_(None)
         wait_for_request(controller)
         assert "连接成功" in controller.status.stringValue(), controller.status.stringValue()
+        assert Gateway.requests[-1][2]["model"] == "jev-latest"
 
         controller.save_button.performClick_(None)
         assert "已保存" in controller.status.stringValue(), controller.status.stringValue()
@@ -83,7 +70,7 @@ try:
 
         controller.window.close()
         reopened = SettingsController.alloc().init().build()
-        assert reopened.fields["DECISION_INFRA"]["MODEL"].stringValue() == "jev-latest"
+        assert reopened.fields["MODEL"].stringValue() == "jev-latest"
         reopened.window.close()
         print("PASS: visible Decision Infra page, no app key, real async test button, secure save, restart isolation")
 finally:

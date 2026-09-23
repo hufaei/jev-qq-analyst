@@ -1,9 +1,8 @@
 #!/bin/zsh
 # Build jev-jarvis.app — a native macOS bundle around the Python app.
 #
-# Why a launcher bundle instead of py2app/PyInstaller: freezing torch + transformers
-# produces a 2-4 GB app. This bundle stays ~100 KB: it carries the Python source and
-# bootstraps a uv-managed virtualenv under ~/Library/Application Support on first launch.
+# The bundle carries only the active Python source and bootstraps a uv-managed
+# virtualenv under ~/Library/Application Support on first launch.
 #
 # What the bundle buys you (the reason to do this at all):
 #   * double-click launch, no terminal
@@ -38,7 +37,10 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/app"
 
 echo "==> 拷贝 Python 源码（版本 $VERSION / Python $PY_PIN）"
 cd "$ROOT"
-cp -R src "$APP/Contents/Resources/app/src"
+mkdir -p "$APP/Contents/Resources/app/src"
+for module in qq_ax conversation_memory decision_infra hud settings settings_config userconfig ui_style; do
+    cp "src/$module.py" "$APP/Contents/Resources/app/src/"
+done
 cp pyproject.toml uv.lock README.md .python-version "$APP/Contents/Resources/app/"
 mkdir -p "$APP/Contents/Resources/app/packaging"
 cp packaging/bootstrap_uv.sh "$APP/Contents/Resources/app/packaging/"
@@ -64,8 +66,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleExecutable</key>        <string>jev-jarvis</string>
     <key>CFBundleIconFile</key>          <string>AppIcon</string>
     <key>LSMinimumSystemVersion</key>    <string>13.0</string>
-    <!-- torch ships no x86_64 macOS wheel (#19): keep the app on arm64 even when
-         Finder "Open using Rosetta" is ticked, instead of dying at first uv sync -->
+    <!-- Preserve the existing arm64-only bundle and Accessibility identity. -->
     <key>LSArchitecturePriority</key>
     <array>
         <string>arm64</string>
@@ -86,7 +87,6 @@ export PYTHONDONTWRITEBYTECODE=1  # keep the signed app bundle immutable at runt
 
 RES="$(cd "$(dirname "$0")" && pwd)"
 SUPPORT="$HOME/Library/Application Support/jev-jarvis"
-CONFIG="$HOME/.config/jev-jarvis"
 VENV="$SUPPORT/venv"
 LOG="$HOME/Library/Logs/jev-jarvis.log"
 mkdir -p "$SUPPORT" "$(dirname "$LOG")"
@@ -94,9 +94,7 @@ mkdir -p "$SUPPORT" "$(dirname "$LOG")"
 # Finder launches have a minimal PATH; add the usual install locations for uv
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 
-# User-level gateway settings live outside the repo. Finder launches do not inherit a
-# shell environment, so the launcher loads the legacy config path before Python starts.
-[ -f "$CONFIG/env" ] && source "$CONFIG/env"
+# hud.py reads the gateway address and model from the legacy config path.
 
 log() { print -r -- "[$(date '+%F %T')] $*" >> "$LOG"; }
 
@@ -120,9 +118,6 @@ if ! jev_ensure_uv "$LOG"; then
 fi
 
 export UV_PROJECT_ENVIRONMENT="$VENV"
-export USE_TF=0                  # laya/transformers: skip the TensorFlow probe
-export HF_HUB_DISABLE_TELEMETRY=1
-
 # The venv must exist AND be the interpreter this bundle pins (@PYTHON_PIN@, written by
 # build_app.sh). uv keeps an existing environment as-is, so a venv built by a different
 # python would silently survive a rebuild — treat a mismatch like a missing venv.

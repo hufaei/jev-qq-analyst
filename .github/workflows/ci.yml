@@ -20,7 +20,7 @@ jobs:
   tests:
     name: 离线回归 (unittest)
     runs-on: macos-latest
-    # 本地实测全套 <2s，超时给的是冷缓存装依赖（torch 较大）的余量
+    # 余量包括 macOS runner 冷启动和首次依赖安装
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7.0.1
@@ -33,3 +33,6 @@ jobs:
 
       - name: 离线回归
         run: uv run python -B -m unittest discover -s tests
+
+      - name: 启动器离线回归
+        run: uv run python -B probe/bootstrap_regression.py

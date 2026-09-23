@@ -3,9 +3,7 @@
 # jev_ensure_uv LOG_PATH. Failures leave a user-facing reason in JEV_UV_ERROR.
 
 jev_check_arch() {
-    # torch (>=2.14) ships no macOS x86_64 wheel, so an x86_64 process would only
-    # die later in `uv sync` with an opaque resolver error (issue #19). Both launch
-    # entries call this before any install work; failure sets JEV_ARCH_ERROR.
+    # Match the existing arm64-only app bundle and supported Apple Silicon setup.
     # On a real Intel Mac `sysctl sysctl.proc_translated` fails (unknown oid), so
     # the empty/failed output falls through to the Intel branch.
     JEV_ARCH_ERROR=""
@@ -13,7 +11,7 @@ jev_check_arch() {
     if [ "$(sysctl -n sysctl.proc_translated 2>/dev/null || true)" = "1" ]; then
         JEV_ARCH_ERROR="检测到本应用正以 Rosetta（Intel 转译）方式运行。请改用原生 ARM 方式启动：终端里请退出 x86_64 终端、用原生终端重跑；.app 请右键「显示简介」取消勾选「使用 Rosetta 打开」后重试。"
     else
-        JEV_ARCH_ERROR="本应用仅支持 Apple Silicon（M 系列）Mac：本地判断模型依赖的 torch 没有 Intel Mac 版本，无法运行。"
+        JEV_ARCH_ERROR="本应用当前仅支持 Apple Silicon（M 系列）Mac。"
     fi
     return 1
 }

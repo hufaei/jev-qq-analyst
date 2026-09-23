@@ -2,7 +2,7 @@
 
 读取 macOS QQ 当前窗口内每一条可见的对方消息，通过 [Decision Infra](https://github.com/hufaei/decision-infra) 精确路由 `jev-latest`，逐条显示意图、情绪、风险和下一步；自己的消息只作上下文，不作为分析目标，也不生成回复。
 
-> **接入边界已调整：** QQ 应用不再直连 TypeSafe、不保存 Provider Key，也不在失败时偷偷换模型。Key、Provider 和模型生命周期全部留在 Decision Infra。
+> QQ 应用只连接 Decision Infra，不保存 Provider Key。Key、Provider 和模型生命周期由 Decision Infra 管理；网关失败时不会切换模型。
 
 > 当前版本不截图、不 OCR、不读取 QQ 数据库、不注入、不 hook，也不会自动发送或填入消息。它只处理本人设备、本人账号、QQ 当前窗口已经加载的文字节点。
 
@@ -110,7 +110,7 @@ Jev 返回以下分析结果：
 
 ## 配置 Decision Infra
 
-打开悬浮窗里的“模型设置”，界面只显示“判断 · Decision Infra”。也可以按 [`.env.example`](.env.example) 编辑 `~/.config/jev-jarvis/env`。这个路径与日志 `~/Library/Logs/jev-jarvis.log` 沿用旧应用名，重命名仓库不会迁移它们：
+打开悬浮窗里的“模型设置”，界面只配置 Decision Infra 网关地址和精确模型路由。也可以按 [`.env.example`](.env.example) 编辑 `~/.config/jev-jarvis/env`。这个路径与日志 `~/Library/Logs/jev-jarvis.log` 沿用旧应用名，重命名仓库不会迁移它们：
 
 ```bash
 export DECISION_INFRA_BASE_URL="http://127.0.0.1:8080"
@@ -164,8 +164,7 @@ uv run python src/qq_ax.py
 
 - `src/qq_ax.py`：QQ 辅助功能树读取与消息解析。
 - `src/decision_infra.py`：Decision Infra contract 客户端、精确路由和响应校验。
-- `src/judge.py`：原有意图与风险等级定义；行动策略和 Jev 三种原语的组合位于 `src/decision_infra.py`。
-- `src/hud.py`：Jev-only 悬浮窗和前台/旧结果边界。
+- `src/hud.py`：QQ 消息分析悬浮窗和前台/旧结果边界。
 - `tests/test_qq_ax.py`：深层遍历、可见行、时间戳与收发方向回归。
 
 ## 许可与隐私

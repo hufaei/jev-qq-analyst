@@ -5,10 +5,7 @@ description = "macOS QQ 可见消息的 Jev 意图与风险分析悬浮窗"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "huggingface-hub>=1.32.0",
     "pyobjc-framework-applicationservices>=12.2.2",
     "pyobjc-framework-cocoa>=12.2.2",
     "pyobjc-framework-quartz>=12.2.2",
-    "torch>=2.14.0",
-    "transformers>=5.17.0",
 ]

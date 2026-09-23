@@ -4,13 +4,13 @@
 
 ## 当前入口
 
-- `src/qq_ax.py`：QQ AX 窗口、消息行、发送者与引用解析；`uv run python src/qq_ax.py` 只输出诊断摘要，不打印聊天正文。
+- `src/qq_ax.py`：QQ AX 窗口、消息行、发送者、引用解析及 `Message` 数据结构；`uv run python src/qq_ax.py` 只输出诊断摘要，不打印聊天正文。
 - `src/conversation_memory.py`：进程内的已见消息与判断缓存。
 - `src/decision_infra.py`：唯一启用的判断客户端；默认网关 `http://127.0.0.1:8080`，默认精确路由 `jev-latest`，单次请求，无静默重试或模型回退。
 - `src/hud.py`：悬浮窗、前台边界与逐条分析；`./start.command` 启动，`./preview.command` 显示离线合成消息。
 - `src/settings.py`、`src/settings_config.py`、`src/userconfig.py`：Decision Infra 设置与 env 加载。用户配置路径仍为 `~/.config/jev-jarvis/env`，app 与日志仍用 `jev-jarvis` 旧名。
 
-`src/qq_ax.py` 复用 `src/perception.py` 的 `Message` 数据结构，不调用其中的旧 OCR 读取逻辑。`src/judge_jev.py`、`src/generate.py`、`src/fill.py` 等旧模块仍在仓库中，但当前 HUD 的可视消息路径不调用它们。不要从这些模块推断当前产品会下载本地判断模型或填入回复。
+源码只保留 QQ AX 读取、Decision Infra 判断、进程内缓存、悬浮窗和设置所需模块。
 
 ## 验证
 

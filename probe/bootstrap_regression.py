@@ -111,6 +111,8 @@ def run_launcher(scenario, source=False):
         (app / "Resources/app").mkdir(parents=True)
         write(app / "Resources/launcher.zsh", launcher)
         write(root / "source/start.command", (ROOT / "start.command").read_text(encoding="utf-8"))
+        write(root / "home/.config/jev-jarvis/env",
+              'echo legacy-config-sourced >> "$TRACE"\nexport OPENAI_API_KEY=old-secret\n')
         helper = ROOT / "packaging/bootstrap_uv.sh"
         if helper.exists():
             for dest in (app / "Resources/app/packaging/bootstrap_uv.sh",
@@ -143,6 +145,13 @@ class BootstrapRegression(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr + log)
         self.assertIn("installer-ran", trace)
         self.assertIn("app-started", trace)
+
+    def test_legacy_config_is_parsed_by_python_not_sourced_by_launchers(self):
+        for source in (False, True):
+            with self.subTest(source=source):
+                completed, trace, log = run_launcher("existing", source=source)
+                self.assertEqual(completed.returncode, 0, completed.stderr + log)
+                self.assertNotIn("legacy-config-sourced", trace)
 
     def test_timeout_never_executes_a_partial_download(self):
         for source in (False, True):
