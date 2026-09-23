@@ -8,6 +8,8 @@ Android 端使用无障碍服务读取**前台 QQ 当前聊天中屏幕上可见
 
 正常使用无需 Mac 或 USB。若以前安装过自行构建的 debug APK，由于签名不同，需先卸载 debug 版，再安装 Release APK；卸载会清除原设置，安装后需要重新填写 URL 和 API Key、重新开启无障碍服务。以后由同一发布密钥签名的 Release APK 可以直接升级。
 
+Release APK 使用项目固定的发布密钥签名，证书 SHA-256 指纹为 `3F:2D:24:40:E6:28:C6:9A:58:7D:ED:BC:4F:69:3C:2B:7D:57:FC:E0:03:CA:CB:69:C9:46:E6:AE:BF:41:40:B9`。每个版本还附有 `SHA256SUMS` 文件。签名用于验证安装包及后续更新的身份；从 GitHub 下载后侧载，系统仍可能要求允许该来源安装并显示安全提示，详见 [常见问题](../docs/FAQ.md#为什么签名-apk-安装时仍提示风险)。
+
 ## 在 Mac 上从源码构建
 
 需要 JDK 17、Android SDK（API 35）和已启用 USB 调试的 Android 手机。首次构建需要下载 Gradle 和 Android 依赖。在仓库的 `android/` 目录运行：

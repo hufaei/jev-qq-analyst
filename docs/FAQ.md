@@ -6,6 +6,10 @@
 
 Android 直接连接用户填写的 Jev HTTPS 接口时，不需要 Mac 或 USB。若要用 Mac 构建、调试或连接 Mac 上的 Decision Infra，打开手机 USB 调试并允许这台 Mac，运行 `adb devices -l` 确认设备状态为 `device`。连接本机网关还需运行 `adb reverse tcp:8080 tcp:8080`；只填 `127.0.0.1` 而不反向映射会连接到手机本机。
 
+## 为什么签名 APK 安装时仍提示风险？
+
+GitHub Release 的 APK 已使用固定的发布密钥签名，可验证文件未被改动，并确保以后由同一密钥签名的版本能升级。Android 对来自应用商店外的安装来源仍会要求用户授权，Google Play Protect 也会检查外部来源的应用；签名不会自动消除这类提示。[Android 的侧载说明](https://developer.android.com/distribute/marketing-tools/alternative-distribution)和 [Google Play Protect 说明](https://support.google.com/googleplay/answer/2812853?hl=zh-Hans)分别解释了这两层检查。下载时请使用本仓库的 Release 链接，并对照随版本提供的 `SHA256SUMS`。
+
 ## 配置文件和日志在哪里？
 
 用户配置仍位于 `~/.config/jev-jarvis/env`，日志仍位于 `~/Library/Logs/jev-jarvis.log`。这两个旧路径会继续被当前启动器使用；仓库更名不会自动迁移它们。开发时还可使用项目根目录的 `.env`，格式见 [示例](../.env.example)。配置保存后重启应用。
