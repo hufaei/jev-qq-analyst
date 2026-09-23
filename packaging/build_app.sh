@@ -41,6 +41,8 @@ mkdir -p "$APP/Contents/Resources/app/src"
 for module in qq_ax conversation_memory decision_infra hud settings settings_config userconfig ui_style; do
     cp "src/$module.py" "$APP/Contents/Resources/app/src/"
 done
+mkdir -p "$APP/Contents/Resources/app/shared"
+cp shared/decision_questions.json "$APP/Contents/Resources/app/shared/"
 cp pyproject.toml uv.lock README.md .python-version "$APP/Contents/Resources/app/"
 mkdir -p "$APP/Contents/Resources/app/packaging"
 cp packaging/bootstrap_uv.sh "$APP/Contents/Resources/app/packaging/"
@@ -195,6 +197,7 @@ check "启动器仅含 arm64 切片"        "lipo -archs '$APP/Contents/MacOS/je
 check "Info.plist 声明仅 arm64"     "plutil -extract LSArchitecturePriority.0 raw '$APP/Contents/Info.plist' | grep -q arm64"
 check "bootstrap 可执行"            "[ -x '$APP/Contents/Resources/launcher.zsh' ]"
 check "源码进包（hud.py）"          "[ -f '$APP/Contents/Resources/app/src/hud.py' ]"
+check "判断问题进包"                  "[ -f '$APP/Contents/Resources/app/shared/decision_questions.json' ]"
 check "锁文件进包（uv.lock）"        "[ -f '$APP/Contents/Resources/app/uv.lock' ]"
 check "uv 安装脚本进包"             "[ -f '$APP/Contents/Resources/app/packaging/bootstrap_uv.sh' ]"
 check "Python 版本进包"             "[ -f '$APP/Contents/Resources/app/.python-version' ]"
@@ -204,7 +207,8 @@ check "运行时不会改写已签名包"       "grep -q '^export PYTHONDONTWRIT
 check "没夹带缓存"                  "[ ! -d '$APP/Contents/Resources/app/src/__pycache__' ]"
 # A key leaked into src/ would ship to everyone who receives the bundle.
 if grep -rEl --binary-files=without-match 'sk-[A-Za-z0-9]{20,}' \
-        "$APP/Contents/Resources/app/src" "$APP/Contents/Resources/app/.env.example" 2>/dev/null | grep -q .; then
+        "$APP/Contents/Resources/app/src" "$APP/Contents/Resources/app/shared" \
+        "$APP/Contents/Resources/app/.env.example" 2>/dev/null | grep -q .; then
     echo "    ✗ 源码里疑似有 API key" >&2
     exit 1
 fi

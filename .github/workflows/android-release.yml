@@ -1,0 +1,90 @@
+name: Android Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    name: 构建并发布签名 APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+          cache-dependency-path: android/**/*.gradle*
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+
+      - name: 核对标签与版本
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          grep -Fqx "version = \"$version\"" pyproject.toml
+          grep -Fq "versionName = \"$version\"" android/app/build.gradle.kts
+
+      - name: 恢复发布签名
+        shell: bash
+        env:
+          ANDROID_RELEASE_KEYSTORE_B64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_B64 }}
+          ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
+          ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
+          ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in ANDROID_RELEASE_KEYSTORE_B64 ANDROID_SIGNING_STORE_PASSWORD ANDROID_SIGNING_KEY_ALIAS ANDROID_SIGNING_KEY_PASSWORD; do
+            if [[ -z "${!name}" ]]; then
+              echo "缺少发布签名配置：$name" >&2
+              exit 1
+            fi
+          done
+          printf '%s' "$ANDROID_RELEASE_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/jev-qq-release.jks"
+          echo "ANDROID_SIGNING_STORE_FILE=$RUNNER_TEMP/jev-qq-release.jks" >> "$GITHUB_ENV"
+
+      - name: 测试并构建 release APK
+        working-directory: android
+        env:
+          ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
+          ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
+          ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleRelease
+
+      - name: 验证签名并生成下载文件
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/app-release.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
+          mkdir -p release
+          cp "$apk" "release/jev-qq-analyst-android-${GITHUB_REF_NAME}.apk"
+          cp "$apk" release/jev-qq-analyst-android.apk
+          (cd release && sha256sum *.apk > SHA256SUMS)
+
+      - name: 发布 GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          assets=(release/*.apk release/SHA256SUMS)
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber
+          else
+            args=("$GITHUB_REF_NAME" "${assets[@]}" --verify-tag --title "jev-qq-analyst $GITHUB_REF_NAME" --latest)
+            notes=".github/release-notes/$GITHUB_REF_NAME.md"
+            if [[ -f "$notes" ]]; then
+              args+=(--notes-file "$notes")
+            else
+              args+=(--generate-notes)
+            fi
+            gh release create "${args[@]}"
+          fi
