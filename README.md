@@ -44,6 +44,8 @@
 
 需要从源码构建、连接本机 Decision Infra 或排查无障碍节点时，参见 [Android 使用说明](android/README.md)。此前自行安装的 debug APK 与 Release APK 签名不同；切换到 Release 版前需要卸载 debug 版并重新填写设置。
 
+若另一款手机上的 QQ 提示“会话标题未识别”或没有可见消息，v0.6.1 起可在设置页手动采集并导出[不含聊天文字的节点报告](android/README.md#不连接电脑导出兼容性诊断)，无需连接电脑。
+
 > [!IMPORTANT]
 > 应用不截图、不 OCR、不读取 QQ 数据库、不注入、不 hook，也不生成、复制、填入或发送回复。Android 直连 Jev 时，API Key 由 Android Keystore 在手机本地加密保存；macOS 端只连接 Decision Infra。完整数据流向见 [隐私说明](PRIVACY.md)。
 
