@@ -73,6 +73,9 @@ jobs:
         shell: pwsh
         run: |
           if (!(Test-Path packaging/dist/jev-qq-analyst.exe)) { throw 'EXE 未生成' }
+          $marker = Join-Path $env:RUNNER_TEMP 'jev-self-check.txt'
+          $process = Start-Process -FilePath packaging/dist/jev-qq-analyst.exe -ArgumentList @('--self-check', $marker) -Wait -PassThru
+          if ($process.ExitCode -ne 0 -or !(Test-Path $marker)) { throw 'EXE 启动自检失败' }
       - uses: actions/upload-artifact@v4
         with:
           name: windows-exe

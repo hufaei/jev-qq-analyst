@@ -876,5 +876,10 @@ class HudApp:
 
 
 if __name__ == "__main__":
-    _log("HUD 启动 · Windows")
-    HudApp().run()
+    if len(sys.argv) == 3 and sys.argv[1] == "--self-check":
+        # CI verifies that the frozen EXE imports all runtime modules and data.
+        # This path never starts the UI, reads QQ, or contacts a model endpoint.
+        Path(sys.argv[2]).write_text("ok", encoding="ascii")
+    else:
+        _log("HUD 启动 · Windows")
+        HudApp().run()

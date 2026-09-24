@@ -85,6 +85,12 @@ jobs:
         run: uv run --locked --python 3.13 python -m unittest discover -s tests -p test_windows_adapter.py
       - name: 构建 EXE
         run: uv run --locked --python 3.13 --with pyinstaller==6.16.0 python -m PyInstaller --noconfirm --distpath packaging/dist --workpath packaging/build packaging/jev-qq-analyst.spec
+      - name: EXE 启动自检
+        shell: pwsh
+        run: |
+          $marker = Join-Path $env:RUNNER_TEMP 'jev-self-check.txt'
+          $process = Start-Process -FilePath packaging/dist/jev-qq-analyst.exe -ArgumentList @('--self-check', $marker) -Wait -PassThru
+          if ($process.ExitCode -ne 0 -or !(Test-Path $marker)) { throw 'EXE 启动自检失败' }
       - name: 准备下载文件
         shell: pwsh
         run: |
