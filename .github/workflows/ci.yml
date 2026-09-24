@@ -55,3 +55,43 @@ jobs:
       - name: Android 离线回归与构建
         working-directory: android
         run: ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug
+
+  windows:
+    name: Windows 回归与 EXE 构建
+    runs-on: windows-2025
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+      - name: Windows 回归
+        run: uv run --locked --python 3.13 python -m unittest discover -s tests -p test_windows_adapter.py
+      - name: 构建 EXE
+        run: uv run --locked --python 3.13 --with pyinstaller==6.16.0 python -m PyInstaller --noconfirm --distpath packaging/dist --workpath packaging/build packaging/jev-qq-analyst.spec
+      - name: 检查产物
+        shell: pwsh
+        run: |
+          if (!(Test-Path packaging/dist/jev-qq-analyst.exe)) { throw 'EXE 未生成' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: packaging/dist/jev-qq-analyst.exe
+
+  macos_bundle:
+    name: macOS arm64 APP 构建
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+      - name: 检查锁文件
+        run: uv lock --check
+      - name: 构建并验证 APP 压缩包
+        run: ./packaging/release.sh --out "$RUNNER_TEMP/release"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-app
+          path: ${{ runner.temp }}/release/*.zip

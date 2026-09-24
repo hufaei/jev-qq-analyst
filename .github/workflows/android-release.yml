@@ -1,11 +1,11 @@
-name: Android Release
+name: Release
 
 on:
   push:
     tags: ['v*']
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   apk:
@@ -67,15 +67,75 @@ jobs:
           mkdir -p release
           cp "$apk" "release/jev-qq-analyst-android-${GITHUB_REF_NAME}.apk"
           cp "$apk" release/jev-qq-analyst-android.apk
-          (cd release && sha256sum *.apk > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-android
+          path: release/*.apk
 
-      - name: 发布 GitHub Release
+  windows:
+    name: 构建 Windows EXE
+    runs-on: windows-2025
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+      - name: Windows 回归
+        run: uv run --locked --python 3.13 python -m unittest discover -s tests -p test_windows_adapter.py
+      - name: 构建 EXE
+        run: uv run --locked --python 3.13 --with pyinstaller==6.16.0 python -m PyInstaller --noconfirm --distpath packaging/dist --workpath packaging/build packaging/jev-qq-analyst.spec
+      - name: 准备下载文件
+        shell: pwsh
+        run: |
+          $versioned = "jev-qq-analyst-windows-$env:GITHUB_REF_NAME.exe"
+          New-Item -ItemType Directory -Force release | Out-Null
+          Copy-Item packaging/dist/jev-qq-analyst.exe "release/$versioned"
+          Copy-Item packaging/dist/jev-qq-analyst.exe release/jev-qq-analyst-windows.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: release/*.exe
+
+  macos_bundle:
+    name: 构建 macOS arm64 APP
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+      - name: 检查锁文件
+        run: uv lock --check
+      - name: 构建并验证 APP 压缩包
+        run: ./packaging/release.sh --out "$RUNNER_TEMP/release"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-macos
+          path: ${{ runner.temp }}/release/*.zip
+
+  publish:
+    name: 发布三端产物
+    needs: [apk, windows, macos_bundle]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release
+          merge-multiple: true
+      - name: 生成校验文件并发布
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          assets=(release/*.apk release/SHA256SUMS)
+          (cd release && sha256sum *.apk *.exe *.zip > SHA256SUMS)
+          assets=(release/*.apk release/*.exe release/*.zip release/SHA256SUMS)
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber
           else

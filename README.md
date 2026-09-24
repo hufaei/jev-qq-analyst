@@ -4,18 +4,18 @@
 
 <p align="center">
   <strong>看懂当前聊天，不替你回复。</strong><br>
-  在 macOS 与 Android QQ 的当前聊天页，逐条分析屏幕上可见的对方文字。
+  在 macOS、Windows 与 Android QQ 的当前聊天页，逐条分析屏幕上可见的对方文字。
 </p>
 
 <p align="center">
   <a href="https://github.com/hufaei/jev-qq-analyst/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/hufaei/jev-qq-analyst?label=Release&color=398269"></a>
   <a href="https://github.com/hufaei/jev-qq-analyst/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/hufaei/jev-qq-analyst/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-Android-7F52FF?logo=kotlin&logoColor=white">
-  <img alt="Python" src="https://img.shields.io/badge/Python-macOS-3776AB?logo=python&logoColor=white">
+  <img alt="Python" src="https://img.shields.io/badge/Python-Windows%20%26%20macOS-3776AB?logo=python&logoColor=white">
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-72797E"></a>
 </p>
 
-**下载 Android APK：** [最新版安装包](https://github.com/hufaei/jev-qq-analyst/releases/latest/download/jev-qq-analyst-android.apk) · [所有版本与 SHA-256 校验值](https://github.com/hufaei/jev-qq-analyst/releases) · [Android 详细说明](android/README.md)
+**下载：** [Android APK](https://github.com/hufaei/jev-qq-analyst/releases/latest/download/jev-qq-analyst-android.apk) · [Windows EXE](https://github.com/hufaei/jev-qq-analyst/releases/latest/download/jev-qq-analyst-windows.exe) · [macOS arm64 APP](https://github.com/hufaei/jev-qq-analyst/releases/latest/download/jev-jarvis-macos-latest.zip) · [所有版本与 SHA-256 校验值](https://github.com/hufaei/jev-qq-analyst/releases)
 
 ## 一眼看懂
 
@@ -24,7 +24,7 @@
 | 读取方式 | QQ 前台聊天页的无障碍节点 | QQ 前台窗口的 UI Automation 节点 | QQ 前台窗口的辅助功能节点 |
 | 判断服务 | 用户填写的 Jev 兼容 HTTPS URL 与 API Key，或本机 Decision Infra | 同 Android：官方 Jev 或本机 Decision Infra | 本机 Decision Infra，精确路由 `jev-latest` |
 | 展示 | 可拖动、缩放、折叠的半透明悬浮面板 | QQ 旁的置顶悬浮面板 | QQ 旁的悬浮窗 |
-| 安装要求 | Android 8.0+（APK 的最低系统版本） | Windows 10/11 与 Electron 内核 NTQQ；打包 exe 免装 Python | Apple Silicon、macOS 13+、Python 3.12 |
+| 安装要求 | Android 8.0+（APK 的最低系统版本） | Windows 10/11 与 Electron 内核 NTQQ；EXE 免装 Python | Apple Silicon、macOS 13+；APP 首次运行需联网安装依赖 |
 
 对方的文字各有一张分析卡，显示**意图、情绪、回复风险、是否值得回复、意图候选和下一步策略**。自己的消息只作上下文；可识别的图片、表情和文件只显示类型占位。分析只针对当前已加载、屏幕上可见的内容。
 
@@ -55,9 +55,9 @@ v0.6.2 根据 iQOO V2520A 上 QQ 9.3.65 的节点报告补充了会话标题识�
 
 要求：Windows 10/11、Electron 内核的 Windows 版 QQ（NTQQ）并已登录。UIA 读取无需辅助功能授权；以管理员身份运行的 QQ 需要本程序同样提权才能读取。
 
-1. 双击仓库根目录的 `start.bat`（首次自动安装 `uiautomation`、`psutil` 依赖），或按 [Windows 构建说明](packaging/windows-build.md) 打包免安装的单文件 exe。
+1. 下载并运行 [Windows EXE](https://github.com/hufaei/jev-qq-analyst/releases/latest/download/jev-qq-analyst-windows.exe)。它由 Windows CI 构建，免装 Python；目前未做代码签名，Windows 可能显示来源警告。开发时也可用仓库根目录的 `start.bat`。
 2. 首次启动会打开设置页：选择连接模式——**官方 Jev**（默认 `https://api.typesafe.ai/v1/systemone`，需 API Key）或 **Infra 网关**（默认 `http://127.0.0.1:8080/v1/systemone`，本机 Decision Infra，免 Key），填模型路由后点“测试连接”、“保存设置”。
-3. 保持 QQ 主窗口在前台并打开一个聊天。面板只在 QQ 前台时出现，停靠在 QQ 旁，可拖动、收起、暂停与重新分析（右键菜单）。
+3. 保持 QQ 聊天窗口在前台。面板只读取这个窗口，停靠在 QQ 旁；拖动面板标题可调整位置，也可缩放、收起或暂停。卡片先显示意图、风险和回复判断，点“查看依据与建议”可展开细节。会话标题未识别时暂停分析。
 
 只检查 QQ 读取链路，不启动模型：
 
@@ -68,11 +68,11 @@ py -3.13 src/qq_ax_win.py
 与 macOS 端一致，该命令只输出窗口尺寸、消息数量、收发方向和耗时，不打印聊天标题、昵称或正文。设置与日志存放在 `%APPDATA%\jev-qq-analyst\`。
 
 > [!NOTE]
-> Windows 端已在 Windows 11 · NTQQ 上实测可见消息与贴纸/图片占位的读取；群聊昵称标签、引用消息等结构与其他 QQ 版本的兼容性以实机表现为准，欢迎反馈。
+> Windows 端曾在 Windows 11 · NTQQ 上实测可见消息与贴纸/图片占位的读取。v0.7.1 增加了前台窗口限定、引用分离和媒体脱敏；这些修复有合成节点回归，仍需在实际 QQ 上复测。群聊昵称标签和其他 QQ 版本的节点结构仍可能需要适配。
 
 ## macOS 快速开始
 
-要求：Apple Silicon Mac、macOS 13+、已登录的 QQ，以及本机运行的 [Decision Infra](https://github.com/hufaei/decision-infra)。本项目使用 Python 3.12 和 `uv`；`start.command` 会在缺少 `uv` 时尝试安装。启动 infra 需要 Node.js 22+ 和 pnpm 12.5.1。
+要求：Apple Silicon Mac、macOS 13+、已登录的 QQ，以及本机运行的 [Decision Infra](https://github.com/hufaei/decision-infra)。可下载 [macOS APP ZIP](https://github.com/hufaei/jev-qq-analyst/releases/latest/download/jev-jarvis-macos-latest.zip) 解压使用，或从源码运行。APP 首次启动会联网准备 Python 3.12、`uv` 和依赖；当前未做 Apple Developer ID 签名及公证，下载后可能需要在系统设置中允许打开。启动 infra 需要 Node.js 22+ 和 pnpm 12.5.1。
 
 1. 在本机 Decision Infra 项目中配置 Provider 并启动网关：
 
@@ -93,7 +93,7 @@ curl http://127.0.0.1:8080/healthz
 
 3. 打开“系统设置 → 隐私与安全性 → 辅助功能”，给运行程序的终端或 `jev-jarvis.app` 授权。`jev-jarvis.app` 是当前打包脚本仍使用的兼容名称。
 4. 保持 QQ 主窗口打开并切到需要分析的聊天。
-5. 在本项目启动悬浮窗：
+5. 从源码启动悬浮窗；若使用 ZIP，打开解压得到的 `jev-jarvis.app`：
 
 ```bash
 ./start.command

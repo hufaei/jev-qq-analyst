@@ -79,7 +79,7 @@ def _qq_pids() -> set[int]:
     pids = set()
     for process in psutil.process_iter(["name"]):
         try:
-            if (process.info["name"] or "").lower().startswith("qq"):
+            if (process.info["name"] or "").lower() == "qq.exe":
                 pids.add(process.pid)
         except Exception:
             continue
@@ -87,15 +87,24 @@ def _qq_pids() -> set[int]:
     return pids
 
 
-def frontmost_app_is_qq() -> bool | None:
-    """Whether QQ is the foreground process (pure user32, no COM)."""
+def _foreground_qq_handle() -> int | None:
+    """Return the foreground QQ top-level HWND, never another QQ window."""
     user32 = ctypes.windll.user32
+    user32.GetForegroundWindow.restype = wintypes.HWND
+    user32.GetAncestor.argtypes = (wintypes.HWND, wintypes.UINT)
+    user32.GetAncestor.restype = wintypes.HWND
     hwnd = user32.GetForegroundWindow()
     if not hwnd:
-        return False
+        return None
+    hwnd = user32.GetAncestor(hwnd, 2) or hwnd  # GA_ROOT
     pid = wintypes.DWORD()
     user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
-    return pid.value in _qq_pids()
+    return int(hwnd) if pid.value in _qq_pids() else None
+
+
+def frontmost_app_is_qq() -> bool | None:
+    """Whether QQ is the foreground process (pure user32, no COM)."""
+    return _foreground_qq_handle() is not None
 
 
 def _rect(control):
@@ -257,6 +266,20 @@ def _classify_image(name: str, w: int, h: int) -> str | None:
         "image" if not (name or "").strip() and w >= 64 and h >= 48 else None)
 
 
+_QUOTE_MARKERS = ("引用消息", "引用的消息", "回复消息", "回复的消息")
+
+
+def _is_quote_container(control) -> bool:
+    try:
+        if control.ControlTypeName not in {"GroupControl", "ButtonControl"}:
+            return False
+        label = " ".join(str(getattr(control, attr, "") or "")
+                         for attr in ("Name", "AutomationId", "HelpText"))
+    except Exception:
+        return False
+    return any(marker in label for marker in _QUOTE_MARKERS)
+
+
 def _parse_row(row, viewport) -> Message | None:
     (vx, vy, vw, vh) = viewport
     row_rect = _rect(row)
@@ -270,16 +293,28 @@ def _parse_row(row, viewport) -> Message | None:
     sender: str | None = None
     side = "unknown"
     texts: list[tuple[str, tuple]] = []
+    quotes: list[str] = []
     media: list[tuple[str, tuple]] = []
     avatar_rect = None
 
-    for control, _depth in _walk([row], max_nodes=600, max_depth=12):
+    queue = [(row, 0, False)]
+    visited = 0
+    while queue and visited < 600:
+        control, depth, in_quote = queue.pop(0)
+        visited += 1
+        in_quote = in_quote or (depth > 0 and _is_quote_container(control))
+        if depth < 12:
+            queue.extend((child, depth + 1, in_quote) for child in _children(control))
         kind_name = control.ControlTypeName
         name = (control.Name or "").strip()
         rect = _rect(control)
         if rect is None:
             continue
         x, y, w, h = rect
+        if in_quote:
+            if kind_name == "TextControl" and name and name not in _QUOTE_MARKERS:
+                quotes.append(name)
+            continue
         if kind_name == "GroupControl" and name and w <= 64 and h <= 64 and abs(w - h) <= 12:
             # avatars sit flush at the row edge; stickers share the shape but
             # live inside the bubble, and carry a media label instead of a nickname
@@ -310,12 +345,9 @@ def _parse_row(row, viewport) -> Message | None:
         rect = media[-1][1]
         side = "them" if rect[0] + rect[2] / 2 < center_x else "me"
 
-    if media and not body_texts:
+    if media:
         kind = media[-1][0]
         text = _MEDIA_PLACEHOLDERS[kind]
-    elif media and body_texts:
-        kind = media[-1][0]
-        text = _MEDIA_PLACEHOLDERS[kind] + "".join(t for t, _r in body_texts)
     else:
         kind = "text"
         text = "".join(t for t, _r in body_texts)
@@ -326,6 +358,7 @@ def _parse_row(row, viewport) -> Message | None:
         text=text, side=side,
         y=max(0.0, min(1.0, (ry - vy) / vh)), conf=1.0,
         h=rh / vh, sender=sender if side == "them" else None,
+        quoted_text="\n".join(quotes).strip() if kind == "text" else "",
         lines=[text], x=(rx - vx) / vw, w=rw / vw, kind=kind,
     )
 
@@ -390,9 +423,18 @@ def read_conversation(max_messages: int | None = None, previous_wid: int | None 
     """Read the current, visible QQ message rows from the foreground QQ window."""
     del previous_wid
     started = time.perf_counter()
-    windows = _qq_windows()
+    foreground_hwnd = _foreground_qq_handle()
+    if foreground_hwnd is None:
+        return {"ok": False, "error": "QQ 不在前台", "messages": []}
+    windows = []
+    for window in _qq_windows():
+        try:
+            if int(window.NativeWindowHandle or 0) == foreground_hwnd:
+                windows.append(window)
+        except Exception:
+            continue  # a QQ window was torn down between enumeration and reading
     if not windows:
-        return {"ok": False, "error": "没找到 QQ 窗口", "messages": []}
+        return {"ok": False, "error": "没找到当前 QQ 窗口", "messages": []}
 
     for window in windows:
         window_rect = _rect(window)

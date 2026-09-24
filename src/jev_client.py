@@ -13,6 +13,7 @@ import base64
 import ctypes
 import json
 import os
+import urllib.parse
 from ctypes import wintypes
 from pathlib import Path
 
@@ -27,6 +28,16 @@ GATEWAY_URL = "http://127.0.0.1:8080/v1/systemone"
 DEFAULT_MODEL = "jev-latest"
 MODES = {"jev": "官方 Jev", "gateway": "Infra 网关"}
 DEFAULT_URLS = {"jev": JEV_URL, "gateway": GATEWAY_URL}
+
+
+def validated_endpoint(mode: str, url: str) -> str:
+    if mode not in MODES:
+        raise ValueError("未知连接模式。")
+    endpoint = systemone_url(url)
+    parsed = urllib.parse.urlsplit(endpoint)
+    if parsed.scheme != "https" and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
+        raise ValueError("外部服务必须使用 HTTPS；HTTP 仅允许本机地址。")
+    return endpoint
 
 
 class _DATA_BLOB(ctypes.Structure):
@@ -85,8 +96,7 @@ def load_settings() -> dict:
 
 
 def save_settings(mode: str, url: str, model: str, api_key: str) -> None:
-    if mode not in MODES:
-        raise ValueError("未知连接模式。")
+    validated_endpoint(mode, url)
     SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
     payload = {"mode": mode, "url": url.strip(), "model": model.strip()}
     if api_key:
@@ -98,6 +108,10 @@ def save_settings(mode: str, url: str, model: str, api_key: str) -> None:
 def settings_complete(settings: dict | None = None) -> bool:
     settings = settings or load_settings()
     if not (settings["url"].strip() and settings["model"].strip()):
+        return False
+    try:
+        validated_endpoint(settings["mode"], settings["url"])
+    except ValueError:
         return False
     return settings["mode"] != "jev" or bool(settings["api_key"].strip())
 
@@ -115,7 +129,7 @@ class JevDirectJudge(DecisionInfraJudge):
                          timeout=timeout)
         self.mode = settings["mode"]
         self.api_key = settings["api_key"]
-        self.endpoint = systemone_url(self.base_url)
+        self.endpoint = validated_endpoint(self.mode, self.base_url)
 
     def _post(self, payload: dict) -> dict:
         headers = ({"authorization": f"Bearer {self.api_key}"}
