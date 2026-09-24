@@ -59,7 +59,7 @@ v0.6.2 根据 iQOO V2520A 上 QQ 9.3.65 的节点报告补充了会话标题识�
 
 1. 下载并运行 [Windows EXE](https://github.com/hufaei/jev-qq-analyst/releases/latest/download/jev-qq-analyst-windows.exe)。它由 Windows CI 构建，免装 Python；目前未做代码签名，Windows 可能显示来源警告。开发时也可用仓库根目录的 `start.bat`。
 2. 首次启动会打开设置页：选择连接模式——**官方 Jev**（默认 `https://api.typesafe.ai/v1/systemone`，需 API Key）或 **Infra 网关**（默认 `http://127.0.0.1:8080/v1/systemone`，本机 Decision Infra，免 Key），填模型路由后点“测试连接”、“保存设置”。
-3. 保持 QQ 聊天窗口在前台。面板只读取这个窗口，停靠在 QQ 旁；拖动面板标题可调整位置，也可缩放、收起或暂停。卡片先显示意图、风险和回复判断，点“查看依据与建议”可展开细节。会话标题未识别时暂停分析。
+3. 保持 QQ 聊天窗口在前台。面板只读取这个窗口，停靠在 QQ 旁；拖动面板标题可调整位置，也可缩放、收起或暂停。分析卡默认显示意图、情绪、风险、回复判断、意图候选、行为与需要、信号和下一步建议；可单独收起详情。会话标题未识别时暂停分析。
 
 只检查 QQ 读取链路，不启动模型：
 

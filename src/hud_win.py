@@ -207,7 +207,7 @@ class HudApp:
         self._last_ok_ts = 0.0
         self._visible_signature = None
         self._reset_scroll = True
-        self._expanded_keys: set[tuple] = set()
+        self._collapsed_keys: set[tuple] = set()
         self._last_width = PANEL_W
         self._expanded_size = (PANEL_W, PANEL_H)
         self._judge_epoch = 0
@@ -399,22 +399,22 @@ class HudApp:
         if emotion:
             self._label(summary, emotion, 9, PALETTE["muted"]).pack(side="right")
 
-        expanded = key in self._expanded_keys
-        tk.Button(card, text="收起详情  ▴" if expanded else "查看依据与建议  ▾",
+        expanded = key not in self._collapsed_keys
+        if expanded:
+            self._card_details(card, verdict)
+        tk.Button(card, text="收起详情  ▴" if expanded else "展开详情  ▾",
                   command=lambda: self._toggle_details(key), bd=0,
                   bg=PALETTE["surface"], fg=PALETTE["green"],
                   activebackground=PALETTE["surface"],
                   activeforeground=PALETTE["green"], cursor="hand2",
                   font=(FONT, 9, "bold"), anchor="w").pack(
-                      fill="x", padx=10, pady=(0, 7))
-        if expanded:
-            self._card_details(card, verdict)
+                      fill="x", padx=10, pady=(6, 7))
 
     def _toggle_details(self, key) -> None:
-        if key in self._expanded_keys:
-            self._expanded_keys.remove(key)
+        if key in self._collapsed_keys:
+            self._collapsed_keys.remove(key)
         else:
-            self._expanded_keys.add(key)
+            self._collapsed_keys.add(key)
         self._render_cards()
 
     def _card_details(self, card, verdict) -> None:
@@ -857,7 +857,7 @@ class HudApp:
         with self._judge_lock:
             self._chat, self._targets, self._messages = "", [], []
         self._display_rows = []
-        self._expanded_keys.clear()
+        self._collapsed_keys.clear()
         self._visible_signature = None
         self._errors = {}
         for child in self.cards.winfo_children():

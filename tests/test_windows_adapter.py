@@ -37,6 +37,33 @@ class Node:
 
 
 class WindowsAdapterTests(unittest.TestCase):
+    def test_verdict_details_show_by_default_and_can_be_collapsed(self):
+        app = hud.HudApp.__new__(hud.HudApp)
+        app.cards = Mock()
+        app.root = Mock()
+        app.root.winfo_width.return_value = 380
+        app.memory = Mock()
+        app.memory.get_verdict.return_value = {"intent": "普通交流", "risk": 2,
+                                              "emotion_confidence": 0}
+        app._errors = {}
+        app._collapsed_keys = set()
+        app._label = Mock(return_value=Mock())
+        app._chip = Mock(return_value=Mock())
+        app._card_details = Mock()
+        message = Mock(sender="对方", text="你好", quoted_text="")
+        key = ("message",)
+        with patch.object(hud.tk, "Frame", return_value=Mock()), \
+                patch.object(hud.tk, "Button", return_value=Mock()) as button:
+            app._peer_card(message, key, 1)
+            app._card_details.assert_called_once()
+            self.assertEqual(button.call_args.kwargs["text"], "收起详情  ▴")
+
+            app._collapsed_keys.add(key)
+            app._card_details.reset_mock()
+            app._peer_card(message, key, 1)
+            app._card_details.assert_not_called()
+            self.assertEqual(button.call_args.kwargs["text"], "展开详情  ▾")
+
     def test_only_foreground_qq_window_is_read(self):
         background = Node(handle=10)
         foreground = Node(handle=20)
@@ -117,7 +144,7 @@ class WindowsAdapterTests(unittest.TestCase):
         app._judge_lock = threading.Lock()
         app._chat, app._targets, app._messages = "会话", [("消息", "key")], ["消息"]
         app._display_rows = [("消息", "key")]
-        app._expanded_keys = {("key",)}
+        app._collapsed_keys = {("key",)}
         app._errors = {"key": "旧错误"}
         app.cards = Mock()
         app.cards.winfo_children.return_value = []
@@ -129,6 +156,7 @@ class WindowsAdapterTests(unittest.TestCase):
         self.assertEqual(app._judge_epoch, 6)
         self.assertEqual((app._chat, app._targets, app._messages), ("", [], []))
         self.assertIsNone(app.judge)
+        self.assertEqual(app._collapsed_keys, set())
 
 
 if __name__ == "__main__":
