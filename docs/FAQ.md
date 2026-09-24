@@ -1,10 +1,18 @@
 # 常见问题
 
-项目有 macOS 和 Android 两个入口。macOS 启动步骤见 [README](../README.md#macos-快速开始)，Android 可直接从 [Release 下载 APK](https://github.com/hufaei/jev-qq-analyst/releases/latest/download/jev-qq-analyst-android.apk)，设置与 USB 调试见 [Android 使用说明](../android/README.md)，数据流向见 [隐私说明](../PRIVACY.md)。以下网关、配置文件和日志条目适用于 macOS 端。
+项目有 macOS、Windows 和 Android 三个入口。macOS 启动步骤见 [README](../README.md#macos-快速开始)，Android 可直接从 [Release 下载 APK](https://github.com/hufaei/jev-qq-analyst/releases/latest/download/jev-qq-analyst-android.apk)，设置与 USB 调试见 [Android 使用说明](../android/README.md)，数据流向见 [隐私说明](../PRIVACY.md)。以下网关、配置文件和日志条目适用于 macOS 端。
 
 ## Android 手机怎样连接 Mac 测试？
 
 Android 直接连接用户填写的 Jev HTTPS 接口时，不需要 Mac 或 USB。若要用 Mac 构建、调试或连接 Mac 上的 Decision Infra，打开手机 USB 调试并允许这台 Mac，运行 `adb devices -l` 确认设备状态为 `device`。连接本机网关还需运行 `adb reverse tcp:8080 tcp:8080`；只填 `127.0.0.1` 而不反向映射会连接到手机本机。
+
+## Android QQ 聊天页没有悬浮面板怎么办？
+
+1. 进入具体的 QQ 聊天页，确认 **Jev · QQ 可见消息分析** 的系统辅助功能仍已开启。打开 Jev 设置页，查看底部“最近 QQ 识别状态”。若提示没有可分析文字，先找一条当前屏幕可见的对方文字消息。
+2. 如果状态停在“已收到 QQ 页面事件，正在读取活动窗口”，或进入聊天页后长时间不更新，检查 Jev 的后台运行限制。在手机上长按 Jev 图标 → **应用信息** → **省电策略／电池用量**，选择 **无限制**；若有“后台自启动”开关，也允许 Jev 自启动。不同品牌的入口名称可能不同。
+3. 改完省电设置后，**重新打开 Jev，确认辅助功能仍开启**，再返回 QQ。系统可能在修改应用策略时结束 Jev 进程并关闭辅助功能；本次 Xiaomi 17 Pro、Android 16、HyperOS 3 实测就是这样恢复的。无需重启手机，也不要从最近任务中强行清除 Jev。
+
+后台省电策略是手机系统设置，不依赖特定 QQ 版本。本次日志确认 QQ 已在前台，但 Jev 进程被系统冻结；本地调试包中增加的持续通知也未单独解除该手机上的冻结。[小米的电池策略说明](https://dev.mi.com/xiaomihyperos/documentation/detail?pId=1575)说明“无限制”允许应用后台工作，[自启动说明](https://dev.mi.com/xiaomihyperos/documentation/detail?pId=1624)说明该权限由用户管理。其他手机若仍无面板，请记录手机型号、Android 版本、QQ 版本和 Jev 页面上的最新识别状态。
 
 ## 为什么签名 APK 安装时仍提示风险？
 

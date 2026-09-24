@@ -42,6 +42,8 @@
 2. 打开 **Jev · QQ 可见消息分析**，填写 Jev 兼容的完整 HTTPS `/v1/systemone` URL、模型路由和对应 API Key；点“保存设置”及“测试连接”。
 3. 在系统“辅助功能”里开启 **Jev · QQ 可见消息分析**，然后进入一个 QQ 聊天页。面板只在 QQ 位于前台时出现。
 
+若已进入聊天页却没有面板，先检查辅助功能是否仍开启；部分手机还需允许 Jev 在后台运行。按 [Android 无面板排查步骤](docs/FAQ.md#android-qq-聊天页没有悬浮面板怎么办) 操作，不需要重启手机。
+
 需要从源码构建、连接本机 Decision Infra 或排查无障碍节点时，参见 [Android 使用说明](android/README.md)。此前自行安装的 debug APK 与 Release APK 签名不同；切换到 Release 版前需要卸载 debug 版并重新填写设置。
 
 若另一款手机上的 QQ 提示“会话标题未识别”或没有可见消息，v0.6.1 起可在设置页手动采集并导出[不含聊天文字的节点报告](android/README.md#不连接电脑导出兼容性诊断)，无需连接电脑。
