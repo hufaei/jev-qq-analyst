@@ -17,7 +17,7 @@ import queue
 from pathlib import Path
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -27,8 +27,8 @@ import qq_ax_win
 from qq_ax_win import frontmost_app_is_qq, read_conversation
 from conversation_memory import ConversationMemory, visible_incoming
 
-PANEL_W, PANEL_H = 400, 520
-COLLAPSED_H = 96
+PANEL_W, PANEL_H = 380, 490
+COLLAPSED_H = 82
 # macOS ticks 0.25/1.0 with ~100ms AX reads; Windows UIA walks cost ~2s, so
 # scale both beats accordingly: fast while unchanged to catch new messages,
 # slow right after a change while the model works through the new rows.
@@ -41,16 +41,16 @@ MAX_ROWS = 14
 FONT = "Microsoft YaHei UI"
 IDLE_STATUS = "等待 QQ 消息…"
 PALETTE = {
-    "bg": "#F4F5F5", "text": "#23272B", "muted": "#72797E",
-    "green": "#398269", "amber": "#9B6F2D", "red": "#B24952",
-    "surface": "#FFFFFF", "row": "#F0F1F2", "own_row": "#EFF1F2",
+    "bg": "#F5F7F6", "text": "#202C2A", "muted": "#687773",
+    "green": "#16775D", "amber": "#A66D20", "red": "#B4474E",
+    "surface": "#FFFFFF", "row": "#E9EFEC", "own_row": "#ECF1EF",
     "own_edge": "#E2E6E8", "own_text": "#58636A",
     "metadata_pill": "#F3F5F5", "metadata_text": "#58636A",
     "prob_high_bg": "#E2EDF2", "prob_high_text": "#315B70",
     "prob_mid_bg": "#EAF0F3", "prob_mid_text": "#526D7B",
     "prob_low_bg": "#F1F3F4", "prob_low_text": "#72797E",
     "reply_yes_bg": "#E3F0E9", "reply_wait_bg": "#F5EBDC",
-    "action_row": "#F5F6F7", "edge": "#DCE0E2",
+    "action_row": "#F4F7F5", "edge": "#DDE6E1", "accent": "#D7EEE3",
 }
 LOG_PATH = jev_client.SETTINGS_DIR / "hud.log"
 
@@ -74,33 +74,67 @@ class SettingsDialog(tk.Toplevel):
         super().__init__(root)
         self.on_saved = on_saved
         self.title("Jev · QQ 设置")
+        self.configure(bg=PALETTE["bg"])
         self.resizable(False, False)
         self.grab_set()
         current = load_settings()
-        frame = ttk.Frame(self, padding=16)
+        frame = tk.Frame(self, bg=PALETTE["bg"], padx=20, pady=18)
         frame.pack(fill="both", expand=True)
+        tk.Label(frame, text="连接 Jev", bg=PALETTE["bg"], fg=PALETTE["text"],
+                 font=(FONT, 16, "bold"), anchor="w").pack(fill="x")
+        tk.Label(frame, text="选择数据发送到哪里，保存前可以先测试连接。",
+                 bg=PALETTE["bg"], fg=PALETTE["muted"], font=(FONT, 9),
+                 anchor="w").pack(fill="x", pady=(2, 14))
 
-        mode_row = ttk.Frame(frame)
-        mode_row.pack(anchor="w", pady=(0, 4))
+        mode_row = tk.Frame(frame, bg=PALETTE["bg"])
+        mode_row.pack(anchor="w", pady=(0, 8))
         self.mode = tk.StringVar(value=current["mode"])
         for value, label in jev_client.MODES.items():
-            ttk.Radiobutton(mode_row, text=label, value=value, variable=self.mode,
-                            command=self._mode_changed).pack(side="left", padx=(0, 16))
+            tk.Radiobutton(mode_row, text=label, value=value, variable=self.mode,
+                           command=self._mode_changed, bg=PALETTE["bg"],
+                           activebackground=PALETTE["bg"], fg=PALETTE["text"],
+                           selectcolor=PALETTE["surface"], font=(FONT, 10)).pack(
+                               side="left", padx=(0, 16))
 
         self.vars = {}
         for key, label in (("url", "URL（含 /v1/systemone）"),
                            ("model", "模型路由"), ("api_key", "API Key（仅官方模式需要）")):
-            ttk.Label(frame, text=label).pack(anchor="w", pady=(6, 0))
+            tk.Label(frame, text=label, bg=PALETTE["bg"], fg=PALETTE["text"],
+                     font=(FONT, 10, "bold"), anchor="w").pack(fill="x", pady=(8, 3))
             var = tk.StringVar(value=current[key])
-            ttk.Entry(frame, textvariable=var, width=52,
-                      show="•" if key == "api_key" else "").pack(fill="x", pady=2)
+            entry = tk.Entry(frame, textvariable=var, width=54, bd=0,
+                             bg=PALETTE["surface"], fg=PALETTE["text"],
+                             insertbackground=PALETTE["text"], font=(FONT, 10),
+                             highlightthickness=1, highlightbackground=PALETTE["edge"],
+                             highlightcolor=PALETTE["green"],
+                             show="•" if key == "api_key" else "")
+            entry.pack(fill="x", ipady=7)
+            if key == "api_key":
+                self.key_entry = entry
             self.vars[key] = var
-        self.status = ttk.Label(frame, text="", foreground=PALETTE["muted"])
-        self.status.pack(anchor="w", pady=(8, 4))
-        buttons = ttk.Frame(frame)
+        self.show_key = tk.BooleanVar(value=False)
+        tk.Checkbutton(frame, text="显示密钥", variable=self.show_key,
+                       command=lambda: self.key_entry.config(
+                           show="" if self.show_key.get() else "•"),
+                       bg=PALETTE["bg"], activebackground=PALETTE["bg"],
+                       fg=PALETTE["muted"], font=(FONT, 9)).pack(anchor="w", pady=(4, 0))
+        tk.Label(frame, text="外部地址需 HTTPS；本机网关可使用 HTTP。密钥由 Windows DPAPI 保存。",
+                 bg=PALETTE["bg"], fg=PALETTE["muted"], font=(FONT, 9),
+                 wraplength=480, justify="left").pack(anchor="w", pady=(5, 0))
+        self.status = tk.Label(frame, text="", bg=PALETTE["bg"], fg=PALETTE["muted"],
+                               font=(FONT, 9), wraplength=480, justify="left")
+        self.status.pack(anchor="w", pady=(10, 5))
+        buttons = tk.Frame(frame, bg=PALETTE["bg"])
         buttons.pack(fill="x")
-        ttk.Button(buttons, text="测试连接", command=self._test).pack(side="left")
-        ttk.Button(buttons, text="保存设置", command=self._save).pack(side="right")
+        self.test_button = tk.Button(buttons, text="测试连接", command=self._test,
+                                     bd=0, bg=PALETTE["row"], fg=PALETTE["text"],
+                                     activebackground=PALETTE["accent"], padx=15, pady=7,
+                                     cursor="hand2", font=(FONT, 10))
+        self.test_button.pack(side="left")
+        tk.Button(buttons, text="保存设置", command=self._save, bd=0,
+                  bg=PALETTE["green"], fg="white", activebackground="#105B47",
+                  activeforeground="white", padx=15, pady=7, cursor="hand2",
+                  font=(FONT, 10, "bold")).pack(side="right")
 
     def _mode_changed(self) -> None:
         # swap the preset URL when the field still holds the other mode's default
@@ -109,19 +143,27 @@ class SettingsDialog(tk.Toplevel):
             self.vars["url"].set(jev_client.DEFAULT_URLS[self.mode.get()])
 
     def _test(self) -> None:
-        self.status.config(text="测试中…", foreground=PALETTE["muted"])
-        self.update_idletasks()
+        values = (self.mode.get(), self.vars["url"].get(),
+                  self.vars["model"].get(), self.vars["api_key"].get())
+        self.status.config(text="正在连接…", fg=PALETTE["muted"])
+        self.test_button.config(state="disabled")
 
         def run():
             try:
-                backend = jev_client.test_connection(
-                    self.mode.get(), self.vars["url"].get(), self.vars["model"].get(),
-                    self.vars["api_key"].get())
+                backend = jev_client.test_connection(*values)
                 outcome = f"连接成功 · 实际路由 {backend}"
+                color = PALETTE["green"]
             except Exception as exc:
                 outcome = f"失败 · {type(exc).__name__}: {str(exc)[:80]}"
-            self.after(0, lambda: self.status.config(
-                text=outcome, foreground=PALETTE["green"] if "成功" in outcome else PALETTE["red"]))
+                color = PALETTE["red"]
+            def finish():
+                if self.winfo_exists():
+                    self.status.config(text=outcome, fg=color)
+                    self.test_button.config(state="normal")
+            try:
+                self.after(0, finish)
+            except tk.TclError:
+                pass
         threading.Thread(target=run, daemon=True).start()
 
     def _save(self) -> None:
@@ -129,7 +171,7 @@ class SettingsDialog(tk.Toplevel):
             save_settings(self.mode.get(), self.vars["url"].get(), self.vars["model"].get(),
                           self.vars["api_key"].get())
         except (OSError, ValueError) as exc:
-            messagebox.showerror("保存失败", str(exc), parent=self)
+            self.status.config(text=str(exc), fg=PALETTE["red"])
             return
         self.on_saved()
         self.destroy()
@@ -140,6 +182,7 @@ class HudApp:
         self.root = tk.Tk()
         self.root.title("Jev · QQ")
         self.root.geometry(f"{PANEL_W}x{PANEL_H}")
+        self.root.minsize(340, 280)
         self.root.attributes("-topmost", True)
         self.root.attributes("-alpha", 0.97)
         self.root.configure(bg=PALETTE["bg"])
@@ -164,6 +207,9 @@ class HudApp:
         self._last_ok_ts = 0.0
         self._visible_signature = None
         self._reset_scroll = True
+        self._expanded_keys: set[tuple] = set()
+        self._last_width = PANEL_W
+        self._expanded_size = (PANEL_W, PANEL_H)
         self._judge_epoch = 0
         self._judge_event = threading.Event()
         self._judge_lock = threading.Lock()
@@ -218,23 +264,31 @@ class HudApp:
             pass
 
     def _build_ui(self) -> None:
-        header = tk.Frame(self.root, bg=PALETTE["bg"])
-        header.pack(fill="x", padx=12, pady=(10, 0))
-        self.title_label = self._label(header, IDLE_STATUS, 12, PALETTE["text"],
+        header = tk.Frame(self.root, bg=PALETTE["surface"],
+                          highlightbackground=PALETTE["edge"], highlightthickness=1)
+        header.pack(fill="x")
+        title_group = tk.Frame(header, bg=PALETTE["surface"])
+        title_group.pack(side="left", fill="x", expand=True, padx=12, pady=8)
+        self._label(title_group, "JEV  /  QQ", 9, PALETTE["green"],
+                    bold=True, anchor="w").pack(fill="x")
+        self.title_label = self._label(title_group, IDLE_STATUS, 12, PALETTE["text"],
                                        bold=True, anchor="w")
-        self.title_label.pack(side="left", fill="x", expand=True)
+        self.title_label.pack(fill="x")
         self._buttons = {}
         for text, key, command in (("⚙", "settings", self.open_settings),
                                    ("▾", "collapse", self.toggle_collapse),
-                                   ("⏸", "pause", self.toggle_pause),
-                                   ("✕", "quit", self.quit)):
-            button = tk.Button(header, text=text, command=command, bd=0, bg=PALETTE["bg"],
+                                   ("⏸", "pause", self.toggle_pause)):
+            button = tk.Button(header, text=text, command=command, bd=0, bg=PALETTE["surface"],
                                fg=PALETTE["muted"], activebackground=PALETTE["row"],
                                font=("Segoe UI", 10), width=3, cursor="hand2")
-            button.pack(side="right")
+            button.pack(side="right", padx=(0, 3), pady=8)
             self._buttons[key] = button
         self.status_label = self._label(self.root, "", 9, PALETTE["muted"], anchor="w")
-        self.status_label.pack(fill="x", padx=12, pady=(2, 4))
+        self.status_label.pack(fill="x", padx=12, pady=(8, 6))
+
+        for widget in (header, title_group, self.title_label):
+            widget.bind("<ButtonPress-1>", self._drag_start)
+            widget.bind("<B1-Motion>", self._drag_move)
 
         self.canvas = tk.Canvas(self.root, bg=PALETTE["bg"], highlightthickness=0)
         self.scroll = ttk.Scrollbar(self.root, orient="vertical", command=self.canvas.yview)
@@ -245,10 +299,28 @@ class HudApp:
         self.canvas.configure(yscrollcommand=self.scroll.set)
         self.canvas.bind("<Configure>",
                          lambda e: self.canvas.itemconfigure(self._win, width=e.width))
-        self.canvas.bind_all("<MouseWheel>",
-                             lambda e: self.canvas.yview_scroll(-1 * (e.delta // 120), "units"))
+        self.canvas.bind_all("<MouseWheel>", self._scroll_cards)
         self.canvas.pack(side="left", fill="both", expand=True)
         self.scroll.pack(side="right", fill="y")
+
+    def _scroll_cards(self, event) -> None:
+        if not self._collapsed:
+            self.canvas.yview_scroll(-1 * (event.delta // 120), "units")
+
+    def _drag_start(self, event) -> None:
+        self._drag_origin = (event.x_root - self.root.winfo_x(),
+                             event.y_root - self.root.winfo_y())
+
+    def _drag_move(self, event) -> None:
+        if not hasattr(self, "_drag_origin"):
+            return
+        x, y = event.x_root - self._drag_origin[0], event.y_root - self._drag_origin[1]
+        x = min(max(0, x), self.root.winfo_screenwidth() - 48)
+        y = min(max(0, y), self.root.winfo_screenheight() - 48)
+        self._place(x, y)
+        if self._layout:
+            _wid, wx, wy, _ww, _wh = self._layout[:5]
+            self._pos_offset = (x - wx, y - wy)
 
     def _build_menu(self) -> None:
         menu = tk.Menu(self.root, tearoff=0)
@@ -266,30 +338,35 @@ class HudApp:
         bar = tk.Frame(self.cards, bg=PALETTE["own_row"] if own else PALETTE["row"],
                        highlightbackground=PALETTE["own_edge"] if own else PALETTE["row"],
                        highlightthickness=1 if own else 0)
-        bar.pack(fill="x", padx=(28 if own else 4, 4), pady=2)
+        bar.pack(fill="x", padx=(28 if own else 8, 8), pady=3)
         sender = "我" if own else message.sender or "对方"
         self._label(bar, f"{sender} · {'仅显示' if media else '上下文'}",
-                    9, PALETTE["muted"], anchor="w").pack(fill="x", padx=10, pady=(4, 0))
-        self._label(bar, message.text, 11, PALETTE["own_text"], anchor="w",
-                    wraplength=PANEL_W - 76, justify="left").pack(fill="x", padx=10, pady=(0, 4))
+                    9, PALETTE["muted"], anchor="w").pack(fill="x", padx=10, pady=(6, 0))
+        self._label(bar, message.text, 10, PALETTE["own_text"], anchor="w",
+                    wraplength=max(220, self.root.winfo_width() - 90),
+                    justify="left").pack(fill="x", padx=10, pady=(0, 6))
 
     def _peer_card(self, message, key, peer_index: int) -> None:
         card = tk.Frame(self.cards, bg=PALETTE["surface"],
                         highlightbackground=PALETTE["edge"], highlightthickness=1)
-        card.pack(fill="x", padx=4, pady=3)
+        card.pack(fill="x", padx=8, pady=4)
         quote = getattr(message, "quoted_text", "")
-        header = f"{message.sender or '对方'} · {peer_index}" + (f" · 引用：{quote[:14]}" if quote else "")
-        self._label(card, header, 10, PALETTE["muted"], anchor="w").pack(
-            fill="x", padx=12, pady=(8, 0))
-        self._label(card, message.text, 13, PALETTE["text"], anchor="w",
-                    wraplength=PANEL_W - 40, justify="left").pack(fill="x", padx=12, pady=(2, 4))
+        self._label(card, f"{message.sender or '对方'}  ·  {peer_index:02d}",
+                    9, PALETTE["muted"], anchor="w").pack(fill="x", padx=12, pady=(10, 0))
+        if quote:
+            self._label(card, f"引用 · {quote[:70]}", 9, PALETTE["muted"], anchor="w",
+                        wraplength=max(220, self.root.winfo_width() - 55),
+                        justify="left").pack(fill="x", padx=12, pady=(3, 0))
+        self._label(card, message.text, 12, PALETTE["text"], anchor="w",
+                    wraplength=max(220, self.root.winfo_width() - 55),
+                    justify="left").pack(fill="x", padx=12, pady=(4, 7))
 
         verdict = self.memory.get_verdict(key) if key else None
         error = self._errors.get(key) if key else None
         if verdict is None:
-            self._label(card, error or "分析中…", 12,
+            self._label(card, error or "正在分析…", 10,
                         PALETTE["red"] if error else PALETTE["muted"],
-                        anchor="w").pack(fill="x", padx=12, pady=(0, 8))
+                        anchor="w").pack(fill="x", padx=12, pady=(0, 10))
             return
 
         risk = int(round(float(verdict.get("risk", 0))))
@@ -297,10 +374,10 @@ class HudApp:
                       PALETTE["amber"] if risk <= 6 else PALETTE["red"])
         emotion = verdict.get("emotion") if verdict.get("emotion_confidence", 0) >= .45 else None
         verdict_row = tk.Frame(card, bg=PALETTE["surface"])
-        verdict_row.pack(fill="x", padx=12)
-        self._label(verdict_row, f"{verdict.get('intent', '—')}   ·   {emotion or '难判断'}",
-                    13, PALETTE["text"], bold=True, anchor="w").pack(side="left")
-        self._label(verdict_row, f"回复风险 {risk}/9", 12, risk_color, bold=True,
+        verdict_row.pack(fill="x", padx=12, pady=(0, 4))
+        self._label(verdict_row, verdict.get("intent", "—"), 12,
+                    PALETTE["text"], bold=True, anchor="w").pack(side="left", fill="x", expand=True)
+        self._label(verdict_row, f"风险 {risk}/9", 10, risk_color, bold=True,
                     anchor="e").pack(side="right")
 
         reply_probability = verdict.get("reply_probability")
@@ -316,27 +393,44 @@ class HudApp:
         else:
             reply_bg, reply_ink = PALETTE["reply_yes_bg"], PALETTE["green"]
             reply_label = f"是否值得回复 · {reply_probability:.0%}"
-        self._chip(card, reply_label, reply_bg, reply_ink, 10).pack(anchor="w", padx=12, pady=(4, 2))
+        summary = tk.Frame(card, bg=PALETTE["surface"])
+        summary.pack(fill="x", padx=12, pady=(0, 7))
+        self._chip(summary, reply_label, reply_bg, reply_ink, 9).pack(side="left")
+        if emotion:
+            self._label(summary, emotion, 9, PALETTE["muted"]).pack(side="right")
 
-        ranked_row = tk.Frame(card, bg=PALETTE["surface"])
-        ranked_row.pack(fill="x", padx=12, pady=2)
-        self._label(ranked_row, "意图可能", 9, PALETTE["muted"]).pack(side="left", padx=(0, 6))
-        for item in (verdict.get("intent_ranking") or [])[:3]:
-            probability = item["probability"]
-            tone = "high" if probability >= .60 else "mid" if probability >= .25 else "low"
-            self._chip(ranked_row, f"{item['label']} {probability:.0%}",
-                       PALETTE[f"prob_{tone}_bg"], PALETTE[f"prob_{tone}_text"], 9
-                       ).pack(side="left", padx=(0, 4))
+        expanded = key in self._expanded_keys
+        tk.Button(card, text="收起详情  ▴" if expanded else "查看依据与建议  ▾",
+                  command=lambda: self._toggle_details(key), bd=0,
+                  bg=PALETTE["surface"], fg=PALETTE["green"],
+                  activebackground=PALETTE["surface"],
+                  activeforeground=PALETTE["green"], cursor="hand2",
+                  font=(FONT, 9, "bold"), anchor="w").pack(
+                      fill="x", padx=10, pady=(0, 7))
+        if expanded:
+            self._card_details(card, verdict)
 
-        pills = tk.Frame(card, bg=PALETTE["surface"])
-        pills.pack(fill="x", padx=12, pady=2)
+    def _toggle_details(self, key) -> None:
+        if key in self._expanded_keys:
+            self._expanded_keys.remove(key)
+        else:
+            self._expanded_keys.add(key)
+        self._render_cards()
+
+    def _card_details(self, card, verdict) -> None:
+        ranking = " · ".join(f"{item['label']} {item['probability']:.0%}"
+                             for item in (verdict.get("intent_ranking") or [])[:3])
+        if ranking:
+            self._label(card, f"意图可能  {ranking}", 9, PALETTE["muted"],
+                        anchor="w", justify="left",
+                        wraplength=max(220, self.root.winfo_width() - 55)).pack(
+                            fill="x", padx=12, pady=(0, 5))
         behavior = verdict.get("behavior") if verdict.get("behavior_confidence", 0) >= .45 else "—"
         need = verdict.get("need") if verdict.get("need_confidence", 0) >= .45 else "—"
-        for title, value in (("行为", behavior), ("需要", need)):
-            pill = tk.Frame(pills, bg=PALETTE["metadata_pill"])
-            self._label(pill, f"{title} · {value}", 10, PALETTE["metadata_text"]).pack(
-                padx=8, pady=2)
-            pill.pack(side="left", padx=(0, 8))
+        self._label(card, f"行为 · {behavior}    需要 · {need}", 9,
+                    PALETTE["metadata_text"], anchor="w", justify="left",
+                    wraplength=max(220, self.root.winfo_width() - 55)).pack(
+                        fill="x", padx=12, pady=(0, 4))
 
         signals = " · ".join(verdict.get("signal_labels", [])[:2])
         if signals:
@@ -349,7 +443,8 @@ class HudApp:
             row = tk.Frame(card, bg=PALETTE["action_row"])
             row.pack(fill="x", padx=10, pady=1)
             self._label(row, f"{index + 1:02d}", 9, PALETTE["muted"]).pack(side="left", padx=(6, 4))
-            self._label(row, item["label"], 10, PALETTE["text"], anchor="w").pack(
+            self._label(row, item["label"], 9, PALETTE["text"], anchor="w",
+                        justify="left", wraplength=max(170, self.root.winfo_width() - 115)).pack(
                 side="left", fill="x", expand=True)
             score_color = (PALETTE["green"] if item["score"] >= 3 else
                            PALETTE["amber"] if item["score"] >= 2 else PALETTE["muted"])
@@ -358,7 +453,6 @@ class HudApp:
         if not ranked_actions:
             self._label(card, "暂无可靠建议", 11, PALETTE["muted"], anchor="w").pack(
                 fill="x", padx=12, pady=(0, 4))
-        card.pack_propagate(True)
 
     def _render_cards(self) -> None:
         for child in self.cards.winfo_children():
@@ -449,6 +543,9 @@ class HudApp:
     def _apply_read(self, result: dict) -> None:
         if not self._read_failure_gate(result):
             return
+        if not result.get("ok"):
+            self._set_status(result.get("error", "读取失败，正在重试"))
+            return
         self._last_ok_ts = time.monotonic()
         if self._shown is not True:
             self._shown = True
@@ -456,8 +553,18 @@ class HudApp:
         else:
             self._follow_qq()  # per-read with dead-band, macOS applyPosition parity
         messages = result["messages"]
-        self._messages = messages
-        chat = result["chat_title"] or "当前聊天"
+        chat = (result.get("chat_title") or "").strip()
+        if not chat:
+            self._judge_epoch += 1
+            self._visible_signature = None
+            with self._judge_lock:
+                self._chat, self._targets, self._messages = "", [], []
+            self._display_rows = []
+            self.title_label.config(text="会话未识别")
+            for child in self.cards.winfo_children():
+                child.destroy()
+            self._set_status("未识别到会话标题，暂停分析")
+            return
         self.title_label.config(text=chat)
         live = self.memory.observe(chat, messages, result.get("at_bottom"))
 
@@ -483,7 +590,8 @@ class HudApp:
             prior_incoming = message.text
         display_rows = display_rows[-MAX_ROWS:]
 
-        signature = (chat, tuple((m.side, m.sender or "", getattr(m, "kind", "text"), m.text)
+        signature = (chat, tuple((m.side, m.sender or "", getattr(m, "kind", "text"),
+                                  m.text, m.quoted_text)
                                  for m, _k in display_rows))
         if signature == self._visible_signature:
             return  # macOS _visible_update: same view, nothing new to show or judge
@@ -494,6 +602,7 @@ class HudApp:
         with self._judge_lock:
             self._chat = chat
             self._targets = targets
+            self._messages = list(messages)
         self._display_rows = display_rows
         self._render_cards()
         if targets:
@@ -599,10 +708,11 @@ class HudApp:
                                            prev_layout=self._layout)
                 if self._foreground_epoch != epoch:
                     continue  # foreground flipped mid-read; drop the stale result
+                unchanged = bool(result.get("unchanged"))
                 if result.get("ok"):
                     self._fingerprint = result.get("fingerprint")
                     self._layout = result.get("layout")
-                    if result.get("unchanged") and self._last_full is not None:
+                    if unchanged and self._last_full is not None:
                         result = self._last_full  # full rows for observe()
                     else:
                         self._last_full = result
@@ -610,11 +720,11 @@ class HudApp:
                 self._events.put(("read", (epoch, result)))
                 heartbeat += 1
                 if heartbeat % 10 == 0:  # ~30s 心跳，用于诊断读取链路
-                    _log(f"读取心跳 · unchanged={bool(result.get('unchanged'))} · "
+                    _log(f"读取心跳 · unchanged={unchanged} · "
                          f"rows={len(result.get('messages', []))} · "
                          f"frontmost={frontmost_app_is_qq()}")
                 next_read_ts = time.monotonic() + (
-                    FAST_TICK if result.get("unchanged") else SLOW_TICK)
+                    FAST_TICK if unchanged else SLOW_TICK)
             except Exception as exc:  # keep the reader alive no matter what
                 _log(f"读取异常 {type(exc).__name__}: {str(exc)[:80]}")
                 time.sleep(2.0)
@@ -626,8 +736,7 @@ class HudApp:
             epoch = self._judge_epoch
             time.sleep(0.55)  # let a scrolling viewport settle before spending calls
             with self._judge_lock:
-                chat, targets = self._chat, list(self._targets)
-            messages = self._messages
+                chat, targets, messages = self._chat, list(self._targets), list(self._messages)
             pending = sum(1 for _m, key in targets if self.memory.get_verdict(key) is None)
             if pending:
                 _log(f"分析循环 · 待分析 {pending}/{len(targets)} 条")
@@ -644,6 +753,8 @@ class HudApp:
                     context = self.memory.context(chat, message, messages, turns=JUDGE_TURNS)
                     verdict = self.judge.judge(message.text, context=context,
                                                quoted_text=message.quoted_text)
+                    if epoch != self._judge_epoch or self._paused:
+                        break
                     self.memory.put_verdict(key, verdict)
                     _log(f"对方消息已分析 · {verdict.get('intent', '—')}")
                 except Exception as exc:
@@ -662,6 +773,10 @@ class HudApp:
 
     def _on_configure(self, event) -> None:
         """A user drag re-bases the follow offset; our own moves don't."""
+        if event.widget is self.root and not self._collapsed and event.width != self._last_width:
+            self._last_width = event.width
+            if self._display_rows:
+                self.root.after_idle(self._render_cards)
         if (event.widget is not self.root or self._placing or self._shown is not True
                 or not self._layout or event.x < -10000 or event.y < -10000):
             return
@@ -682,8 +797,9 @@ class HudApp:
         if self._pos_offset is None:
             screen_w = self.root.winfo_screenwidth()
             x = wx + ww + 8
-            if x + PANEL_W > screen_w:
-                x = max(0, wx - PANEL_W - 8)
+            panel_w = self.root.winfo_width() or PANEL_W
+            if x + panel_w > screen_w:
+                x = max(0, wx - panel_w - 8)
             self._pos_offset = (x - wx, max(0, wy) - wy)
         dx, dy = self._pos_offset
         target = (max(0, wx + dx), max(0, wy + dy))
@@ -693,8 +809,20 @@ class HudApp:
 
     def toggle_collapse(self) -> None:
         self._collapsed = not self._collapsed
-        height = COLLAPSED_H if self._collapsed else PANEL_H
-        self.root.geometry(f"{PANEL_W}x{height}")
+        if self._collapsed:
+            self._expanded_size = (self.root.winfo_width(), self.root.winfo_height())
+            self.canvas.pack_forget()
+            self.scroll.pack_forget()
+            self.root.resizable(False, False)
+            self.root.geometry(f"{self._expanded_size[0]}x{COLLAPSED_H}")
+            self._buttons["collapse"].config(text="▴")
+        else:
+            width, height = self._expanded_size
+            self.root.resizable(True, True)
+            self.root.geometry(f"{width}x{height}")
+            self.canvas.pack(side="left", fill="both", expand=True)
+            self.scroll.pack(side="right", fill="y")
+            self._buttons["collapse"].config(text="▾")
 
     def toggle_pause(self) -> None:
         self._paused = not self._paused
@@ -723,9 +851,21 @@ class HudApp:
         SettingsDialog(self.root, self._settings_saved)
 
     def _settings_saved(self) -> None:
+        self._judge_epoch += 1
+        self._judge_event.clear()
+        self.memory = ConversationMemory()
+        with self._judge_lock:
+            self._chat, self._targets, self._messages = "", [], []
+        self._display_rows = []
+        self._expanded_keys.clear()
+        self._visible_signature = None
+        self._errors = {}
+        for child in self.cards.winfo_children():
+            child.destroy()
         self._configured = settings_complete()
         self.judge = None  # rebuild with new credentials on next call
         self._fingerprint = None
+        self._last_full = None
         self._set_status("设置已保存 · 读取中…" if self._configured else "请完成设置")
 
     def quit(self) -> None:
@@ -736,5 +876,10 @@ class HudApp:
 
 
 if __name__ == "__main__":
-    _log("HUD 启动 · Windows")
-    HudApp().run()
+    if len(sys.argv) == 3 and sys.argv[1] == "--self-check":
+        # CI verifies that the frozen EXE imports all runtime modules and data.
+        # This path never starts the UI, reads QQ, or contacts a model endpoint.
+        Path(sys.argv[2]).write_text("ok", encoding="ascii")
+    else:
+        _log("HUD 启动 · Windows")
+        HudApp().run()
